@@ -1025,10 +1025,18 @@ async fn split_archive(path: String, options: SplitOptions) -> Result<Vec<String
 
 #[tauri::command]
 fn get_launch_file() -> Option<String> {
-    std::env::args().nth(1).filter(|p| {
-        let path = std::path::Path::new(p);
-        path.exists() && path.is_file()
+    std::env::args().skip(1).find(|p| {
+        !p.starts_with("--") && std::path::Path::new(p).exists()
     })
+}
+
+#[tauri::command]
+fn get_launch_files() -> Vec<String> {
+    std::env::args()
+        .skip(1)
+        .filter(|p| !p.starts_with("--"))
+        .filter(|p| std::path::Path::new(p).exists())
+        .collect()
 }
 
 #[cfg(windows)]
@@ -1155,6 +1163,7 @@ pub fn run() {
             extract_archive,
             verify_archive,
             get_launch_file,
+            get_launch_files,
             rename_file,
             convert_archive,
             delete_file,

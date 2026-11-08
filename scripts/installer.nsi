@@ -72,6 +72,9 @@ Section "MainSection" SEC01
   ; Create Desktop Shortcut
   CreateShortcut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\dodazip-ui.exe" "" "$INSTDIR\icon.ico" 0
 
+  ; Create SendTo Shortcut: Right-click -> Send to -> DodaZip
+  CreateShortcut "$SENDTO\DodaZip.lnk" "$INSTDIR\dodazip-ui.exe" "" "$INSTDIR\icon.ico" 0
+
   ; Register File Association for .dzip
   WriteRegStr HKCU "Software\Classes\.dzip" "" "DodaZip.Vault"
   WriteRegStr HKCU "Software\Classes\.dzip" "Content Type" "application/x-dzip"
@@ -132,6 +135,7 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\${PRODUCT_NAME}\Uninstall ${PRODUCT_NAME}.lnk"
   RMDir "$SMPROGRAMS\${PRODUCT_NAME}"
   Delete "$DESKTOP\${PRODUCT_NAME}.lnk"
+  Delete "$SENDTO\DodaZip.lnk"
 
   ; Remove Registry Keys
   DeleteRegKey HKCU "Software\Classes\DodaZip.Vault"

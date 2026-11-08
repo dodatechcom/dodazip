@@ -141,11 +141,12 @@ export const Home: React.FC = () => {
   })
   const [deleteBusy, setDeleteBusy] = useState(false)
 
-  const openCompressModal = useCallback((files: string[]) => {
+  const openCompressModal = useCallback((files: string[], targetDir?: string) => {
+    const dir = targetDir || (files.length > 0 ? getParentPath(files[0]) : '') || currentPath || ''
     setCompressModal({
       isOpen: true,
       selectedFiles: files,
-      currentDir: currentPath || '',
+      currentDir: dir,
     })
   }, [currentPath])
 
@@ -252,16 +253,39 @@ export const Home: React.FC = () => {
     }
   }, [navigate])
 
-  // Handle opening archive passed via Windows Explorer / Command Line
+  // Handle opening archive or compressing files passed via Windows Explorer / Command Line
   useEffect(() => {
-    invoke<string | null>('get_launch_file')
-      .then((file) => {
-        if (file && isArchive(file)) {
-          openArchiveInBrowser(file, getPathBaseName(file))
+    invoke<string[]>('get_launch_files')
+      .then((files) => {
+        if (files && files.length > 0) {
+          if (files.length === 1 && isArchive(files[0])) {
+            openArchiveInBrowser(files[0], getPathBaseName(files[0]))
+          } else {
+            const first = files[0]
+            const parent = getParentPath(first)
+            if (parent) {
+              loadDirectory(parent, false)
+            }
+            openCompressModal(files, parent || undefined)
+          }
         }
       })
-      .catch(() => {})
-  }, [openArchiveInBrowser])
+      .catch(() => {
+        invoke<string | null>('get_launch_file')
+          .then((file) => {
+            if (file) {
+              if (isArchive(file)) {
+                openArchiveInBrowser(file, getPathBaseName(file))
+              } else {
+                const parent = getParentPath(file)
+                if (parent) loadDirectory(parent, false)
+                openCompressModal([file], parent || undefined)
+              }
+            }
+          })
+          .catch(() => {})
+      })
+  }, [openArchiveInBrowser, loadDirectory, openCompressModal])
 
   const exitArchiveMode = useCallback(() => {
     if (!archiveContext) return
@@ -1737,6 +1761,28 @@ export const Home: React.FC = () => {
               {selectedFiles.size > 0 && (
                 <>{selectedFiles.size} selected{estimatedSize && <> · {estimatedSize}</>}</>
               )}
+              <button
+                type="button"
+                onClick={() => safeOpenUrl('https://dodatech.com/docs/dodazip/')}
+                title="Open Online Documentation (or press F1)"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+              >
+                <span>Press <kbd style={{ padding: '0 4px', fontSize: 10, borderRadius: 3, background: 'var(--bg-card)', border: '1px solid var(--border-light)', fontFamily: 'monospace' }}>F1</kbd> for Help</span>
+              </button>
+              <span style={{ color: 'var(--border-light)' }}>·</span>
               <button
                 type="button"
                 onClick={() => setShowAbout(true)}
