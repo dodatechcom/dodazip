@@ -1,0 +1,30 @@
+[package]
+name = "dodazip-ui"
+version = "0.1.0"
+description = "DodaZip - Cross-Platform Compression Tool UI"
+authors = ["you"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0", features = [] }
+tauri-plugin-dialog = "2.0"
+tauri-plugin-fs = "2.0"
+tauri-plugin-shell = "2.0"
+dodazip = { path = ".." }
+serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
+walkdir = "2.0"
+dirs = "5.0"
+zip = "2"
+sevenz-rust = "0.6"
+unrar = "0.5"
+tar = "0.4"
+flate2 = "1"
+bzip2 = "0.5"
+blake3 = "1.5"
+xz2 = "0.1"
+

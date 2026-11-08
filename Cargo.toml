@@ -1,0 +1,69 @@
+[workspace]
+members = [
+    ".",
+    "src-tauri",
+]
+
+[package]
+name = "dodazip"
+version = "0.1.0"
+edition = "2021"
+description = "Cross-platform compression tool with better ratio than 7-zip"
+license = "MIT OR Apache-2.0"
+
+
+[features]
+default = []
+fuse = ["dep:fuser", "dep:libc"]
+wasm = []
+
+[dependencies]
+zstd = "0.13"
+lz4_flex = "0.11"
+blake3 = "1.5"
+clap = { version = "4.5", features = ["derive"] }
+rayon = "1.10"
+memmap2 = "0.9"
+hex = "0.4"
+walkdir = "2.0"
+filetime = "0.2"
+thiserror = "1.0"
+anyhow = "1.0"
+chacha20poly1305 = { version = "0.10", features = ["std"] }
+argon2 = "0.5"
+rand = "0.8"
+generic-array = "0.14"
+typenum = "1.17"
+xz2 = "0.1"
+reed-solomon-novelpoly = "2.0"
+zeroize = "1.7"
+rpassword = "7.0"
+fuser = { version = "0.15", optional = true }
+libc = { version = "0.2", optional = true }
+zip = "2"
+sevenz-rust = "0.6"
+unrar = "0.5"
+tar = "0.4"
+flate2 = "1"
+bzip2 = "0.5"
+dirs = "5"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+tempfile = "3.10"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.dev]
+debug = 1
+split-debuginfo = "unpacked"
+incremental = true
+
+[[bin]]
+name = "dodazip"
+path = "src/main.rs"

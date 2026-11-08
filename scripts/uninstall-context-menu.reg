@@ -1,0 +1,11 @@
+Windows Registry Editor Version 5.00
+
+; Remove DodaZIP context menu entries
+; Usage: regedit /s uninstall-context-menu.reg
+
+[-HKEY_CLASSES_ROOT\.dzip]
+[-HKEY_CLASSES_ROOT\DodaZIP.Archive]
+[-HKEY_CLASSES_ROOT\*\shell\DodaZIP]
+[-HKEY_CLASSES_ROOT\*\shell\DodaZIPAdvanced]
+[-HKEY_CLASSES_ROOT\Directory\shell\DodaZIP]
+[-HKEY_CLASSES_ROOT\Directory\shell\DodaZIPAdvanced]

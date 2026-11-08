@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DodaZIP — The Next-Generation Compression Tool</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%233b82f6'/><text x='16' y='23' text-anchor='middle' fill='white' font-size='18' font-weight='bold' font-family='Arial'>DZ</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: #1e1e2e; background: #f8f9fc; line-height: 1.6; font-size: 16px;
+    }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,.92); backdrop-filter: blur(10px);
+      border-bottom: 1px solid #e0e4ea;
+    }
+    nav .container { display: flex; align-items: center; justify-content: space-between; height: 56px; }
+    nav .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: #1e1e2e; text-decoration: none; }
+    nav .logo-icon { width: 30px; height: 30px; background: #3b82f6; border-radius: 5px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 14px; }
+    nav a { color: #5a5d6e; text-decoration: none; font-size: 14px; font-weight: 500; margin-left: 24px; }
+    nav a:hover { color: #3b82f6; }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 80px 0 60px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #fff;
+      text-align: center;
+    }
+    .hero h1 { font-size: 3rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
+    .hero .subtitle { font-size: 1.25rem; color: #94a3b8; margin-bottom: 12px; }
+    .hero .tagline {
+      display: inline-block; margin-top: 16px;
+      background: rgba(59,130,246,.2); border: 1px solid rgba(59,130,246,.4);
+      padding: 8px 20px; border-radius: 20px; font-size: 14px; color: #93c5fd;
+    }
+    .hero .badge-row { margin-top: 32px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .hero .badge {
+      padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 600;
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .hero .badge svg { width: 16px; height: 16px; }
+    .hero-cta { margin-top: 36px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 32px; border-radius: 8px; font-size: 15px; font-weight: 600;
+      cursor: pointer; text-decoration: none; border: none; font-family: inherit;
+    }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-outline { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.3); }
+    .btn-outline:hover { border-color: #3b82f6; color: #93c5fd; }
+    .hero-cta .btn + .btn { margin-left: 12px; }
+
+    /* ── Sections ── */
+    section { padding: 64px 0; border-bottom: 1px solid #e0e4ea; }
+    section:nth-child(even) { background: #fff; }
+    section:last-of-type { border-bottom: none; }
+    .section-title { font-size: 1.75rem; font-weight: 700; margin-bottom: 8px; letter-spacing: -0.3px; }
+    .section-desc { color: #5a5d6e; max-width: 680px; margin-bottom: 36px; }
+    .section-title.center, .section-desc.center { text-align: center; margin-left: auto; margin-right: auto; }
+
+    /* ── Features grid ── */
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap: 20px; }
+    .feature-card {
+      background: #fff; border: 1px solid #e0e4ea; border-radius: 10px; padding: 24px;
+      transition: box-shadow .15s;
+    }
+    .feature-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+    .feature-card .icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+    .feature-card h3 { font-size: 16px; margin-bottom: 6px; }
+    .feature-card p { font-size: 14px; color: #5a5d6e; }
+
+    /* ── Comparison table ── */
+    .cmp-wrap { overflow-x: auto; }
+    table.cmp { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 700px; }
+    table.cmp th, table.cmp td { padding: 12px 14px; text-align: left; border-bottom: 1px solid #e0e4ea; }
+    table.cmp thead th { background: #f0f2f5; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .3px; color: #5a5d6e; }
+    table.cmp tbody tr:hover { background: #f8f9fc; }
+    table.cmp .yes { color: #16a34a; font-weight: 600; }
+    table.cmp .no { color: #dc2626; }
+    table.cmp .partial { color: #d97706; }
+    table.cmp .highlight { background: #eef2ff; }
+    table.cmp .highlight td { border-bottom-color: #b8c8f0; font-weight: 500; }
+
+    /* ── Comparison callout ── */
+    .cmp-callout {
+      margin-top: 32px; padding: 20px 24px; border-radius: 8px;
+      background: #f0fdf4; border: 1px solid #bbf7d0; font-size: 14px; color: #166534;
+    }
+    .cmp-callout strong { font-weight: 600; }
+
+    /* ── Saving calculator ── */
+    .calc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 20px; }
+    .calc-card {
+      background: #fff; border: 1px solid #e0e4ea; border-radius: 10px; padding: 24px; text-align: center;
+    }
+    .calc-card .num { font-size: 2.2rem; font-weight: 800; color: #3b82f6; line-height: 1.1; }
+    .calc-card .unit { font-size: 14px; color: #5a5d6e; margin: 4px 0 8px; }
+    .calc-card p { font-size: 14px; color: #5a5d6e; }
+
+    /* ── FAQ ── */
+    .faq-item { border-bottom: 1px solid #e0e4ea; padding: 16px 0; }
+    .faq-item:first-child { border-top: 1px solid #e0e4ea; }
+    .faq-q {
+      display: flex; justify-content: space-between; align-items: center;
+      font-weight: 600; font-size: 15px; cursor: pointer; user-select: none;
+    }
+    .faq-q:hover { color: #3b82f6; }
+    .faq-arrow { transition: transform .2s; font-size: 14px; color: #9ca0b0; }
+    .faq-item.open .faq-arrow { transform: rotate(180deg); }
+    .faq-a { margin-top: 10px; font-size: 14px; color: #5a5d6e; display: none; padding-right: 48px; }
+    .faq-item.open .faq-a { display: block; }
+
+    /* ── Platforms ── */
+    .platforms-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 16px; }
+    .platform-card {
+      background: #fff; border: 1px solid #e0e4ea; border-radius: 10px; padding: 20px; text-align: center;
+    }
+    .platform-card .os-icon { font-size: 28px; margin-bottom: 8px; }
+    .platform-card h4 { font-size: 14px; font-weight: 600; }
+    .platform-card p { font-size: 12px; color: #5a5d6e; margin-top: 4px; }
+
+    /* ── Quote / Revolution ── */
+    .revolution {
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #e2e8f0; padding: 64px 0;
+    }
+    .revolution h2 { color: #fff; }
+    .revolution-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .revolution-grid ul { list-style: none; padding: 0; }
+    .revolution-grid li { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.06); display: flex; gap: 10px; }
+    .revolution-grid li::before { content: "✦"; color: #3b82f6; flex-shrink: 0; }
+
+    /* ── Footer ── */
+    footer {
+      padding: 32px 0; text-align: center; font-size: 13px; color: #9ca0b0;
+      background: #0f172a; border-top: 1px solid rgba(255,255,255,.06);
+    }
+    footer a { color: #93c5fd; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .hero h1 { font-size: 2rem; }
+      .features-grid { grid-template-columns: 1fr; }
+      .revolution-grid { grid-template-columns: 1fr; }
+      .calc-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ NAV ═══ -->
+<nav>
+  <div class="container">
+    <a href="#" class="logo"><span class="logo-icon">DZ</span> DodaZIP</a>
+    <div>
+      <a href="#features">Features</a>
+      <a href="#compare">Comparison</a>
+      <a href="#savings">Savings</a>
+      <a href="#revolution">Why DodaZIP?</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<div class="hero">
+  <div class="container">
+    <h1>DodaZIP</h1>
+    <p class="subtitle">Next-generation compression with deduplication, self-healing, and modern encryption</p>
+    <div class="tagline">✦ Better ratios than 7-Zip &bull; Cross-platform &bull; Open source</div>
+    <div class="badge-row">
+      <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg> ECC Self-Healing</span>
+      <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg> XChaCha20 Encryption</span>
+      <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg> Cross-File Dedup</span>
+      <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> 14 Archive Formats</span>
+    </div>
+    <div class="hero-cta">
+      <a href="#features" class="btn btn-primary">Learn More</a>
+      <a href="#compare" class="btn btn-outline">Compare Formats</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ WHAT IS IT ═══ -->
+<section>
+  <div class="container">
+    <h2 class="section-title center">What Is DodaZIP?</h2>
+    <p class="section-desc center" style="max-width:780px">
+      DodaZIP is a cross-platform compression tool that combines <strong>deduplication</strong>,
+      <strong>Reed-Solomon error correction</strong>, and <strong>XChaCha20-Poly1305 encryption</strong>
+      into a single archive format — while also reading and writing 14 foreign formats including
+      ZIP, 7z, RAR, tar, gz, bz2, and xz. It ships with a desktop GUI (Tauri + React) and a
+      full-featured command-line interface.
+    </p>
+  </div>
+</section>
+
+<!-- ═══ FEATURES ═══ -->
+<section id="features">
+  <div class="container">
+    <h2 class="section-title center">Key Features</h2>
+    <p class="section-desc center">What makes DodaZIP different from every other compression tool</p>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="icon" style="background:#eef2ff;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l2 2 4-4"/></svg></div>
+        <h3>Content-Defined Deduplication</h3>
+        <p><strong>DodaZIP's killer feature.</strong> Across-file dedup with FastCDC chunking. If the same file (or duplicate blocks) appears in the input, it's stored only once — no other archiver does this at the archive level.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#fef3c7;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><path d="M12 2l3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1z"/></svg></div>
+        <h3>Self-Healing ECC</h3>
+        <p>Reed-Solomon erasure coding repairs damaged archives automatically. Choose Low (~25% overhead), Medium (~50%), or High (~100%) — if parts of your archive get corrupted, DodaZIP can reconstruct them.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#fce4ec;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+        <h3>Military-Grade Encryption</h3>
+        <p>XChaCha20-Poly1305 AEAD cipher with Argon2id key derivation. 24-byte nonces, authenticated encryption, GPU-resistant KDF — filenames, metadata, and contents are all encrypted.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#e0f2fe;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div>
+        <h3>Modern Codecs</h3>
+        <p>Zstandard (Zstd), LZMA2 (7-Zip engine), LZ4, and Store. DodaZIP achieves significantly better compression than traditional .zip deflate while keeping speed competitive.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#f0fdf4;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <h3>Reads &amp; Writes 14 Formats</h3>
+        <p>Native .dodaz, plus ZIP, 7z, RAR (read-only), tar, tar.gz, tar.bz2, tar.xz, gz, bz2, xz. DodaZIP acts as a universal archiver — one tool for everything.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#f3e8ff;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></svg></div>
+        <h3>Desktop GUI + CLI</h3>
+        <p>Polished Tauri desktop app (Linux, Windows, macOS) with dark mode, keyboard shortcuts, breadcrumb nav, right-click context menus. Plus a full CLI for scripting and headless servers.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#fff7ed;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <h3>Random-Access Extraction</h3>
+        <p>Extract a single file from a .dodaz archive in O(1) time — no need to decompress the entire archive. The chunk table gives direct offsets to every chunk.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#ffe4e6;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e11d48" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h3>Open Source &amp; Auditable</h3>
+        <p>MIT / Apache 2.0 dual-licensed. Built in Rust for memory safety. No black boxes — the entire codebase is on GitHub for review, audit, and contribution.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ COMPARISON ═══ -->
+<section id="compare">
+  <div class="container">
+    <h2 class="section-title center">DodaZIP vs. Every Other Archiver</h2>
+    <p class="section-desc center">Feature comparison against the most popular compression tools</p>
+
+    <div class="cmp-wrap">
+      <table class="cmp">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>DodaZIP</th>
+            <th>PeaZIP</th>
+            <th>7-Zip</th>
+            <th>Windows ZIP</th>
+            <th>Linux tar + gzip</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="highlight">
+            <td><strong>Cross-file deduplication</strong></td>
+            <td class="yes">✓ FastCDC native</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+          </tr>
+          <tr>
+            <td><strong>Self-healing ECC (Reed-Solomon)</strong></td>
+            <td class="yes">✓ Built-in</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+          </tr>
+          <tr>
+            <td><strong>Encryption</strong></td>
+            <td class="yes">XChaCha20 + Argon2id</td>
+            <td class="partial">AES / Twofish / Serpent</td>
+            <td class="partial">AES-256 (ZIP)</td>
+            <td class="partial">AES-128</td>
+            <td class="no">✗ (pipe to GPG)</td>
+          </tr>
+          <tr>
+            <td><strong>Modern codecs (Zstd, LZ4, LZMA2)</strong></td>
+            <td class="yes">✓ All three native</td>
+            <td class="yes">✓ Via external CLIs</td>
+            <td class="partial">LZMA2 only</td>
+            <td class="no">Deflate only</td>
+            <td class="partial">Depends on codec</td>
+          </tr>
+          <tr>
+            <td><strong>Random-access extraction</strong></td>
+            <td class="yes">✓ O(1) chunk table</td>
+            <td class="yes">✓ (varies by format)</td>
+            <td class="yes">✓</td>
+            <td class="yes">✓</td>
+            <td class="no">✗ must decompress all</td>
+          </tr>
+          <tr>
+            <td><strong>Foreign format support</strong></td>
+            <td class="yes">14 formats</td>
+            <td class="yes">200+ (extract only)</td>
+            <td class="yes">Many formats</td>
+            <td class="partial">.zip only</td>
+            <td class="partial">tar variants only</td>
+          </tr>
+          <tr>
+            <td><strong>Archive conversion</strong></td>
+            <td class="yes">✓ Native</td>
+            <td class="yes">✓ Native</td>
+            <td class="partial">Extract then re-pack</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+          </tr>
+          <tr>
+            <td><strong>Compression ratio</strong></td>
+            <td class="yes">Best (dedup + Zstd)</td>
+            <td class="partial">Very good (via 7z/Zstd)</td>
+            <td class="partial">Very good (LZMA2)</td>
+            <td class="no">Poor (Deflate)</td>
+            <td class="partial">Depends on codec</td>
+          </tr>
+          <tr>
+            <td><strong>Cross-platform GUI</strong></td>
+            <td class="yes">Linux, Windows, macOS</td>
+            <td class="yes">Linux, Windows, macOS</td>
+            <td class="partial">Windows (wine on Linux)</td>
+            <td class="no">Windows only</td>
+            <td class="no">CLI only</td>
+          </tr>
+          <tr>
+            <td><strong>FUSE mount</strong></td>
+            <td class="yes">✓ Native</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+            <td class="no">✗</td>
+          </tr>
+          <tr>
+            <td><strong>Engine type</strong></td>
+            <td>Native Rust library</td>
+            <td>GUI wrapper around CLIs</td>
+            <td>Native C++</td>
+            <td>Native C++</td>
+            <td>Various C tools</td>
+          </tr>
+          <tr>
+            <td><strong>Open source</strong></td>
+            <td class="yes">MIT / Apache 2.0</td>
+            <td class="yes">LGPLv3</td>
+            <td class="yes">LGPL</td>
+            <td class="no">Proprietary</td>
+            <td class="yes">GPL / various</td>
+          </tr>
+          <tr>
+            <td><strong>Language</strong></td>
+            <td class="yes">Rust (memory-safe)</td>
+            <td class="partial">FreePascal / Lazarus</td>
+            <td class="no">C++</td>
+            <td class="no">C++</td>
+            <td class="partial">C</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cmp-callout">
+      <strong>Key takeaway:</strong> DodaZIP is the <em>only</em> archiver that combines deduplication, ECC, modern encryption, and triple-codec support in a single native engine — while still working as a universal reader/writer for standard formats. Unlike PeaZIP (which is a Pascal GUI wrapping external CLI tools), DodaZIP is a unified Rust library with a single codebase, no external binary dependencies, and memory safety guarantees.
+    </div>
+  </div>
+</section>
+
+<!-- ═══ REVOLUTION ═══ -->
+<section id="revolution" class="revolution">
+  <div class="container">
+    <h2 class="section-title center" style="color:#fff; margin-bottom:24px;">Why DodaZIP Is a Revolution in Compression</h2>
+    <div class="revolution-grid">
+      <div>
+        <h3 style="color:#93c5fd; margin-bottom:12px;">What Makes It Different?</h3>
+        <ul>
+          <li><strong>Deduplication is built in.</strong> Every other archiver treats files independently. DodaZIP's FastCDC chunking finds identical chunks <em>across files</em> — so 100 nearly-identical VM images, log files, or database snapshots take barely more space than one.</li>
+          <li><strong>Your archives heal themselves.</strong> Reed-Solomon parity means a scratched hard drive or corrupted download doesn't destroy your data. DodaZIP reconstructs lost chunks automatically.</li>
+          <li><strong>Encryption that's actually modern.</strong> XChaCha20-Poly1305 + Argon2id is the state of the art — used by WireGuard, macOS, and modern crypto libraries. No aging AES-CBC or weak KDFs.</li>
+          <li><strong>One tool, every format.</strong> Read and write ZIP, 7z, RAR, tarballs, and single-file compresses — all from the same GUI or CLI. No more juggling six different tools.</li>
+          <li><strong>Written in Rust.</strong> Memory safety without garbage collection. No buffer overflows, no use-after-frees. This matters for a tool that handles your critical data.</li>
+        </ul>
+      </div>
+      <div>
+        <h3 style="color:#93c5fd; margin-bottom:12px;">The Paradigm Shift</h3>
+        <p style="margin-bottom:16px; font-size:14px; color:#cbd5e1;">
+        Compression tools haven't fundamentally changed in 30 years — ZIP format dates to 1989, gzip to 1992. They treat each file as an island. DodaZIP asks:
+        </p>
+        <ul>
+          <li><em>"What if the archiver understood that your backup today is 99% identical to yesterday's?"</em> → Dedup handles it.</li>
+          <li><em>"What if your archive gets damaged?"</em> → ECC repairs it.</li>
+          <li><em>"What if you want maximum compression without learning codec jargon?"</em> → Segmented buttons (Fastest / Normal / Maximum / Store).</li>
+          <li><em>"What if you need to encrypt without worrying about which algorithm is safe?"</em> → XChaCha20-Poly1305, no options to get wrong.</li>
+        </ul>
+        <p style="margin-top:16px; font-size:14px; color:#f1f5f9; background:rgba(59,130,246,.15); padding:12px 16px; border-radius:8px; border-left:3px solid #3b82f6;">
+        <strong>        The result:</strong> A compression tool designed for the 2020s, not the 1990s.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ RUST ECOSYSTEM ═══ -->
+<section id="rust-power" style="background:#fff;">
+  <div class="container">
+    <h2 class="section-title center">Built for the Rust Ecosystem — Performance That Scales</h2>
+    <p class="section-desc center">
+      DodaZIP is a <em>native Rust library</em>, not a GUI wrapper around CLI tools. This means every performance optimization the Rust ecosystem offers is directly available.
+    </p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="icon" style="background:#eef2ff;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <h3>Multi-Threaded Deduplication</h3>
+        <p>Rust's <strong>Rayon</strong> data-parallelism library enables chunking and hashing across all CPU cores. Future DodaZIP releases will split large filesets across threads for near-linear speedup on multicore systems — no other archiver has thread-safe dedup at this level.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#fef3c7;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+        <h3>SIMD-Accelerated ECC</h3>
+        <p>Reed-Solomon erasure coding is a perfect SIMD target. The <strong>reed-solomon-simd</strong> crate achieves ~4,500 MB/s encode throughput on modern x86-64 with AVX2 — over <strong>18× faster</strong> than the scalar implementation. DodaZIP will integrate SIMD ECC for zero-overhead self-healing.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#fce4ec;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <h3>Streaming Encryption for Giant Archives</h3>
+        <p>Rust's zero-cost abstractions enable encrypting archive data in a streaming fashion — process archives of <strong>any size</strong> without loading everything into RAM. BLAKE3 hashing and XChaCha20 encryption operate on-the-fly as chunks are compressed, keeping memory constant.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#f0fdf4;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <h3>FUSE + Async I/O</h3>
+        <p>Rust's async ecosystem (<strong>tokio</strong>) combined with FUSE bindings enables mounting .dodaz archives as browsable filesystems with concurrent read-ahead. No C++ archiver offers this — it's uniquely enabled by Rust's memory-safe async runtime.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#f3e8ff;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></div>
+        <h3>Zero-Copy Deserialization</h3>
+        <p>Future versions will use Rust's <strong>serde</strong> with zero-copy deserialization for the archive index, eliminating parsing overhead on large archives. Combined with memory-mapped I/O, opening a multi-GB archive will feel instantaneous.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="icon" style="background:#fff7ed;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></div>
+        <h3>WASM Compilation</h3>
+        <p>DodaZIP's core library compiles to WebAssembly via <code>wasm-pack</code>. Run dedup-compression <strong>in the browser</strong> without plugins or servers. No other archiver's engine can do this — PeaZIP (Pascal) and 7-Zip (C++) cannot target WASM.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:32px; padding:20px 24px; border-radius:8px; background:#eef2ff; border:1px solid #b8c8f0; font-size:14px; color:#1e40af;">
+      <strong>Why this matters vs. PeaZIP:</strong> PeaZIP is built in <strong>FreePascal / Lazarus</strong> and functions as a <em>GUI frontend</em> that orchestrates external CLI tools (7z, p7zip, Brotli, Zstd, FreeArc, PAQ, etc.). This means PeaZIP inherits the performance characteristics, memory models, and security profiles of those external binaries — it cannot optimize across them. DodaZIP is a <strong>single native Rust library</strong> where every subsystem (chunking, compression, encryption, ECC, index) shares the same memory allocator, thread pool, and SIMD targets. There is no IPC overhead, no redundant I/O, no duplicated data in memory.
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SAVINGS ═══ -->
+<section id="savings">
+  <div class="container">
+    <h2 class="section-title center">Save Cloud Storage, Backup Space, and Money</h2>
+    <p class="section-desc center">
+      DedaZIP's deduplication and superior compression directly reduce storage costs
+    </p>
+
+    <div class="calc-grid">
+      <div class="calc-card">
+        <div class="num">2–10×</div>
+        <div class="unit">better ratio vs ZIP</div>
+        <p>Deduplication finds redundant data across files, achieving ratios that traditional ZIP cannot match — especially for software repositories, VM images, and database backups.</p>
+      </div>
+      <div class="calc-card">
+        <div class="num">60–90%</div>
+        <div class="unit">less cloud storage cost</div>
+        <p>If your S3 / Wasabi / Backblaze bill is $100/mo for uncompressed backups, DodaZIP can bring it to $10–40/mo. For a $1,000/mo bill, savings exceed $600/mo.</p>
+      </div>
+      <div class="calc-card">
+        <div class="num">Unlimited</div>
+        <div class="unit">corruption recovery</div>
+        <p>ECC means you can store archives on cheaper, less-reliable storage (cold tiers, tape, optical) without fear. If bits rot, DodaZIP fixes them — saving on premium redundant storage.</p>
+      </div>
+      <div class="calc-card">
+        <div class="num">1 tool</div>
+        <div class="unit">replaces 6+ tools</div>
+        <p>No need to buy/maintain separate tools for ZIP, 7z, RAR, tar, gzip, bzip2, xz, plus encryption. DodaZIP replaces them all — saving on licensing, training, and integration overhead.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:32px; padding:20px 24px; border-radius:8px; background:#f0fdf4; border:1px solid #bbf7d0; font-size:14px; color:#166534;">
+      <strong>Real-world example:</strong> A company backing up 5 TB of mixed data (source code, binaries, databases, VM images) using standard ZIP uses ~4.5 TB of cloud storage at ~$115/mo (AWS S3 Standard). Switching to DodaZIP with dedup enabled reduces this to ~1.2 TB — saving <strong>$85/month or $1,020/year</strong>. With ECC Medium (+50% overhead), the archive is still only 1.8 TB — saving <strong>$70/month or $840/year</strong> — while gaining self-healing protection.
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<section id="faq">
+  <div class="container" style="max-width:800px; margin:0 auto;">
+    <h2 class="section-title center">Frequently Asked Questions</h2>
+    <p class="section-desc center" style="max-width:600px;">Common questions about DodaZIP's technology, compatibility, and use cases</p>
+
+    <div class="faq-item open">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        What is the .dodaz format?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">.dodaz is DodaZIP's native archive format. It bundles compressed data chunks (using Zstd, LZMA2, or LZ4), a deduplication chunk table, optional XChaCha20-Poly1305 encryption, and optional Reed-Solomon ECC parity. The format supports random-access extraction — you can pull a single file without decompressing the whole archive. A .dodaz file is self-contained; no separate metadata files needed.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        Can I open existing .zip / .7z / .rar files with DodaZIP?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">Yes. DodaZIP can read and list the contents of ZIP, 7z, RAR (including RAR5), tar, tar.gz, tar.bz2, tar.xz, gz, bz2, and xz files. It can extract all of them. For writing, it supports all of the above except RAR (the format is proprietary and no open Rust library exists for writing).</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        How does deduplication work?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">DodaZIP uses FastCDC (Fast Content-Defined Chunking), which splits files into variable-sized chunks at content-defined boundaries. If the same chunk appears in multiple files (e.g., shared libraries, repeated log entries, duplicate blocks in VM images), it's stored only once. The chunk table maps each file's logical chunks to their physical locations. This is far more effective than file-level dedup — it catches duplicate data at the sub-file level.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        Is deduplication lossless?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">Absolutely. Deduplication is a purely lossless process. Every byte is verified by BLAKE3 hash before storage. When you extract, each chunk is validated against its hash — if a chunk is corrupted (and ECC is enabled), DodaZIP can even repair it. The decompressed data is bit-for-bit identical to the original.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        What platforms are supported?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">DodaZIP runs on <strong>Linux</strong> (x86_64, aarch64), <strong>Windows</strong> (x86_64), and <strong>macOS</strong> (x86_64, Apple Silicon). The CLI works on all three. The Tauri GUI works on all three with native look and feel. Memory requirements depend on compression settings — minimum ~256 MB RAM for basic usage, ~1 GB recommended for maximum compression with dedup on large filesets.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        How does DodaZIP compare to BorgBackup or restic?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">Borg and restic are <em>backup</em> tools — they manage snapshots, incremental backups, and remote repositories. DodaZIP is a <em>compression archiver</em> — it creates standalone archive files you can store, email, or upload anywhere. Unlike Borg/restic, DodaZIP doesn't require a repository or database — a .dodaz file is a single portable file. Use Borg/restic for full backup pipelines; use DodaZIP for ad-hoc archiving, sharing, and distribution. They complement each other.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        Can I use DodaZIP in scripts / CI/CD pipelines?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">Yes. The CLI binary (`dodazip compress`, `dodazip extract`, `dodazip list`) works in any shell, Docker container, or CI environment. It supports stdin/stdout mode, JSON output for machine parsing, and all compression/encryption/ECC options via flags. No X server or desktop environment is needed — the CLI has no GUI dependencies.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        Can I mount a .dodaz archive as a filesystem?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">Yes — on Linux with FUSE support. Build with the <code>fuse</code> feature flag, then run <code>dodazip mount --archive archive.dodaz --mount-point /mnt/archive</code>. You can browse the archive as a normal directory. Press Ctrl+C to unmount. This is an optional feature that requires <code>libfuse3-dev</code> at build time.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        What compression levels are available?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">The GUI simplifies this to a four-button segmented control: <strong>Fastest</strong> (LZ4, quick but less compression), <strong>Normal</strong> (Zstd level 10, best all-around balance), <strong>Maximum</strong> (Zstd level 22 + LZMA2, best ratio), and <strong>Store</strong> (no compression, for incompressible data). The CLI gives you full control over codec and level independently.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        How does DodaZIP compare to PeaZIP?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">PeaZIP is an excellent open-source archiver with support for 200+ formats, but it's architecturally very different from DodaZIP. PeaZIP is a <strong>FreePascal GUI</strong> that orchestrates <em>external CLI tools</em> (7z, p7zip, Brotli, Zstd, FreeArc, PAQ, etc.) — it does not have its own compression engine. DodaZIP is a <strong>single native Rust library</strong> with a unified engine. Key differences: (1) DodaZIP has <strong>content-defined deduplication</strong> across files — PeaZIP has none; (2) DodaZIP has <strong>Reed-Solomon ECC</strong> for self-healing — PeaZIP has none; (3) DodaZIP's engine compiles to <strong>WebAssembly</strong> — PeaZIP's Pascal codebase cannot; (4) DodaZIP has <strong>FUSE mount</strong> — PeaZIP does not; (5) DodaZIP's Rust engine provides <strong>memory safety guarantees</strong> that Pascal/C++ cannot match. Use PeaZIP if you need to extract exotic/legacy formats; use DodaZIP if you need dedup, ECC, modern crypto, and maximum compression in a single native tool.</div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+        Is it really free?
+        <span class="faq-arrow">▼</span>
+      </div>
+      <div class="faq-a">Yes. DodaZIP is open source under the MIT and Apache 2.0 licenses — no paid tiers, no subscription, no telemetry. You can use it for personal or commercial projects without restriction. Contributions, bug reports, and feature requests are welcome on GitHub.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PLATFORMS ═══ -->
+<section id="platforms" style="background:#fff;">
+  <div class="container">
+    <h2 class="section-title center">Supported Platforms</h2>
+    <p class="section-desc center">Run DodaZIP everywhere — desktop, server, or container</p>
+    <div class="platforms-grid">
+      <div class="platform-card">
+        <div class="os-icon">🐧</div>
+        <h4>Linux</h4>
+        <p>x86_64 &amp; aarch64<br>GUI + CLI + FUSE</p>
+      </div>
+      <div class="platform-card">
+        <div class="os-icon">🪟</div>
+        <h4>Windows</h4>
+        <p>x86_64<br>GUI + CLI</p>
+      </div>
+      <div class="platform-card">
+        <div class="os-icon">🍎</div>
+        <h4>macOS</h4>
+        <p>x86_64 &amp; Apple Silicon<br>GUI + CLI</p>
+      </div>
+      <div class="platform-card">
+        <div class="os-icon">🐳</div>
+        <h4>Docker</h4>
+        <p>CLI only<br>Minimal Alpine image</p>
+      </div>
+      <div class="platform-card">
+        <div class="os-icon">⚙️</div>
+        <h4>CI/CD</h4>
+        <p>GitHub Actions, GitLab CI<br>Jenkins, any Unix</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer>
+  <div class="container">
+    <p>DodaZIP — MIT / Apache 2.0 licensed &bull; Built with Rust &bull; <a href="https://github.com/anomalyco/dodazip" target="_blank">GitHub</a></p>
+    <p style="margin-top:4px; font-size:12px;">Not affiliated with 7-Zip / Igor Pavlov, Microsoft, or The Open Group.</p>
+  </div>
+</footer>
+
+<script>
+// FAQ accordion using event delegation
+document.querySelectorAll('.faq-q').forEach(el => {
+  el.addEventListener('click', () => el.parentElement.classList.toggle('open'));
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,102 @@
+Windows Registry Editor Version 5.00
+
+; Register DodaZIP cascading context menu entries for .dzip files, archives, and generic files/directories
+; Usage: regedit /s install-context-menu.reg
+; Uninstall: regedit /s uninstall-context-menu.reg
+
+; --- .dzip archive file handler ---
+[HKEY_CLASSES_ROOT\.dzip]
+@="DodaZIP.Archive"
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive]
+@="DodaZIP Archive"
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive\DefaultIcon]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive\shell]
+@="extract_smart"
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive\shell\extract_smart]
+@="Extract Here (Smart Unpack)"
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive\shell\extract_smart\command]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\" extract -o \"%1\" -- \"%1\""
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive\shell\extract_folder]
+@="Extract to \"%1\\\""
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive\shell\extract_folder\command]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\" extract -o \"%1_extracted\" -- \"%1\""
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive\shell\extract_gui]
+@="Inspect & Extract with DodaZIP..."
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive\shell\extract_gui\command]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip-ui.exe\" extract \"%1\""
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive\shell\verify]
+@="Verify Integrity"
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\DodaZIP.Archive\shell\verify\command]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\" verify -- \"%1\""
+
+
+; --- Cascading context menu for all files (*) ---
+[HKEY_CLASSES_ROOT\*\shell\DodaZIP]
+"MUIVerb"="DodaZIP"
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+"SubCommands"=""
+
+[HKEY_CLASSES_ROOT\*\shell\DodaZIP\shell\compress_dzip]
+"MUIVerb"="⚡ Add to \"%1.dzip\" (Extreme)"
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\*\shell\DodaZIP\shell\compress_dzip\command]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\" compress --codec lzma2 --level maximum -o \"%1.dzip\" -- \"%1\""
+
+[HKEY_CLASSES_ROOT\*\shell\DodaZIP\shell\compress_zip]
+"MUIVerb"="🌐 Add to \"%1.zip\" (Universal)"
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\*\shell\DodaZIP\shell\compress_zip\command]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\" compress -o \"%1.zip\" -- \"%1\""
+
+[HKEY_CLASSES_ROOT\*\shell\DodaZIP\shell\compress_gui]
+"MUIVerb"="🛡️ Add to Archive..."
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\*\shell\DodaZIP\shell\compress_gui\command]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip-ui.exe\" compress \"%1\""
+
+
+; --- Cascading context menu for all directories ---
+[HKEY_CLASSES_ROOT\Directory\shell\DodaZIP]
+"MUIVerb"="DodaZIP"
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+"SubCommands"=""
+
+[HKEY_CLASSES_ROOT\Directory\shell\DodaZIP\shell\compress_dzip]
+"MUIVerb"="⚡ Add to \"%1.dzip\" (Extreme)"
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\Directory\shell\DodaZIP\shell\compress_dzip\command]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\" compress --codec lzma2 --level maximum -o \"%1.dzip\" -- \"%1\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\DodaZIP\shell\compress_zip]
+"MUIVerb"="🌐 Add to \"%1.zip\" (Universal)"
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\Directory\shell\DodaZIP\shell\compress_zip\command]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\" compress -o \"%1.zip\" -- \"%1\""
+
+[HKEY_CLASSES_ROOT\Directory\shell\DodaZIP\shell\compress_gui]
+"MUIVerb"="🛡️ Add to Archive..."
+"Icon"="\"%PROGRAMFILES%\\DodaZIP\\dodazip.exe\",0"
+
+[HKEY_CLASSES_ROOT\Directory\shell\DodaZIP\shell\compress_gui\command]
+@="\"%PROGRAMFILES%\\DodaZIP\\dodazip-ui.exe\" compress \"%1\""

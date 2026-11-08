@@ -1,0 +1,10 @@
+{
+  "name": "dodazip",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix ui run dev",
+    "build": "npm --prefix ui run build",
+    "tauri": "npm --prefix ui exec -- tauri",
+    "clean": "cargo clean && rm -rf src-tauri/target ui/dist"
+  }
+}
