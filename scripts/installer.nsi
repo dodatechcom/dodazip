@@ -57,6 +57,7 @@ Section "MainSection" SEC01
   ; Install Binaries and Assets
   File "..\target\release\dodazip-ui.exe"
   File "..\target\release\dodazip.exe"
+  File "..\target\release\WebView2Loader.dll"
   File "..\src-tauri\icons\icon.ico"
   File "..\src-tauri\icons\dzip_file.ico"
   File "..\README.md"
@@ -118,6 +119,7 @@ Section "Uninstall"
   ; Remove Files
   Delete "$INSTDIR\dodazip-ui.exe"
   Delete "$INSTDIR\dodazip.exe"
+  Delete "$INSTDIR\WebView2Loader.dll"
   Delete "$INSTDIR\icon.ico"
   Delete "$INSTDIR\dzip_file.ico"
   Delete "$INSTDIR\README.md"
