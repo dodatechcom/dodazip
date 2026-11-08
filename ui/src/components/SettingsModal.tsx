@@ -15,7 +15,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   const { lang, setLanguage, t } = useI18n()
 
   const [autoCheck, setAutoCheck] = useState<boolean>(preferences.autoCheckUpdates)
-  const [serverUrl, setServerUrl] = useState<string>(preferences.updateServer)
   const [activeTheme, setActiveTheme] = useState(preferences.theme)
 
   // Update check states
@@ -25,7 +24,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
   useEffect(() => {
     if (isOpen) {
       setAutoCheck(preferences.autoCheckUpdates)
-      setServerUrl(preferences.updateServer)
       setActiveTheme(preferences.theme)
       setUpdateResult(null)
     }
@@ -53,17 +51,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     preferences.autoCheckUpdates = val
   }
 
-  const handleServerUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    setServerUrl(val)
-    preferences.updateServer = val
-  }
-
   const handleCheckUpdatesNow = async () => {
     setChecking(true)
     setUpdateResult(null)
     try {
-      const res = await checkForUpdates(serverUrl)
+      const res = await checkForUpdates()
       setUpdateResult(res)
     } catch (err: any) {
       setUpdateResult({
@@ -285,30 +277,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               </div>
             </label>
 
-            {/* Custom update server URL */}
-            <div style={{ marginTop: 14 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
-                {t('settings.updateServer', 'Update Server Source URL (Optional)')}
-              </label>
-              <input
-                type="text"
-                value={serverUrl}
-                onChange={handleServerUrlChange}
-                placeholder="https://updates.dodatech.com/latest.json (Default: Cloudflare R2)"
-                style={{
-                  width: '100%',
-                  padding: '7px 10px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-surface)',
-                  color: 'var(--text-primary)',
-                  fontSize: 12,
-                  boxSizing: 'border-box',
-                }}
-              />
-              <span style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginTop: 3 }}>
-                Primary: Cloudflare R2 (<code>updates.dodatech.com</code>) with seamless GitHub fallback.
-              </span>
+            {/* Official Update Channel Notice */}
+            <div
+              style={{
+                marginTop: 12,
+                padding: '8px 12px',
+                background: 'var(--bg-surface)',
+                borderRadius: 6,
+                border: '1px solid var(--border-light)',
+                fontSize: 11,
+                color: 'var(--text-secondary)',
+                lineHeight: 1.5,
+              }}
+            >
+              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Official CDN Channel: </span>
+              Cloudflare R2 (<code>https://updates.dodatech.com/dodazip/latest.json</code>) with secure fallback.
             </div>
 
             {/* Action button & status */}

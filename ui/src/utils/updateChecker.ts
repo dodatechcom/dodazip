@@ -1,7 +1,5 @@
-import { preferences } from './preferences'
-
 export const CURRENT_VERSION = '0.1.0'
-export const DEFAULT_UPDATE_SERVER = 'https://updates.dodatech.com/latest.json'
+export const DEFAULT_UPDATE_SERVER = 'https://updates.dodatech.com/dodazip/latest.json'
 export const GITHUB_FALLBACK_API = 'https://api.github.com/repos/dodatechcom/dodazip/releases/latest'
 
 export interface UpdateInfo {
@@ -37,7 +35,7 @@ export function compareVersions(a: string, b: string): number {
   return 0
 }
 
-async function fetchFromR2OrCustom(url: string, currentVersion: string): Promise<UpdateInfo | null> {
+async function fetchFromR2(url: string, currentVersion: string): Promise<UpdateInfo | null> {
   try {
     const res = await fetch(url, {
       headers: { Accept: 'application/json' },
@@ -53,7 +51,7 @@ async function fetchFromR2OrCustom(url: string, currentVersion: string): Promise
       data.download_url ||
       data.html_url ||
       (Array.isArray(data.assets) && data.assets[0]?.browser_download_url) ||
-      `https://updates.dodatech.com/releases/DodaZip-Setup-v${latestVersion}.exe`
+      `https://updates.dodatech.com/dodazip/releases/DodaZip-Setup-v${latestVersion}.exe`
 
     const releaseNotes = data.notes || data.body || data.description || ''
     const hasUpdate = compareVersions(latestVersion, currentVersion) > 0
@@ -111,26 +109,18 @@ async function fetchFromGitHub(currentVersion: string): Promise<UpdateInfo> {
 }
 
 /**
- * Checks for updates:
- * 1. Custom URL if specified by user
- * 2. Cloudflare R2 bucket endpoint (https://updates.dodatech.com/latest.json)
- * 3. Graceful fallback to GitHub Releases API (rate-limit safe)
+ * Checks for software updates:
+ * 1. Primary: Official Cloudflare R2 bucket at https://updates.dodatech.com/dodazip/latest.json
+ * 2. Fallback: Official GitHub Releases API (rate-limit safe fallback)
  */
-export async function checkForUpdates(customUrl?: string): Promise<UpdateInfo> {
+export async function checkForUpdates(): Promise<UpdateInfo> {
   const currentVersion = CURRENT_VERSION
-  const userUrl = (customUrl || preferences.updateServer || '').trim()
 
-  // 1. If user specified a custom URL, try that first
-  if (userUrl) {
-    const customResult = await fetchFromR2OrCustom(userUrl, currentVersion)
-    if (customResult) return customResult
-  }
-
-  // 2. Primary: Cloudflare R2 bucket at updates.dodatech.com
-  const r2Result = await fetchFromR2OrCustom(DEFAULT_UPDATE_SERVER, currentVersion)
+  // 1. Primary: Cloudflare R2 bucket endpoint
+  const r2Result = await fetchFromR2(DEFAULT_UPDATE_SERVER, currentVersion)
   if (r2Result) return r2Result
 
-  // 3. Fallback: GitHub Releases API
+  // 2. Fallback: GitHub Releases API
   try {
     return await fetchFromGitHub(currentVersion)
   } catch (err: any) {
@@ -138,7 +128,7 @@ export async function checkForUpdates(customUrl?: string): Promise<UpdateInfo> {
       hasUpdate: false,
       currentVersion,
       latestVersion: currentVersion,
-      downloadUrl: 'https://updates.dodatech.com',
+      downloadUrl: 'https://updates.dodatech.com/dodazip',
       error: err?.message || 'Could not connect to update servers (R2 / GitHub)',
     }
   }
