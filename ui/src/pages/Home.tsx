@@ -86,6 +86,7 @@ export const Home: React.FC = () => {
   const [sortDir, setSortDir] = useState<SortDir>('asc')
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; file?: FileInfo } | null>(null)
   const [tabCtxMenu, setTabCtxMenu] = useState<{ x: number; y: number; tab: TabState } | null>(null)
+  const [bookmarkCtxMenu, setBookmarkCtxMenu] = useState<{ x: number; y: number; index: number; bookmark: Bookmark } | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>(() => resolveTheme(preferences.theme))
   const [message, setMessage] = useState('')
   const [msgType, setMsgType] = useState<'info' | 'success' | 'error'>('info')
@@ -1064,6 +1065,35 @@ export const Home: React.FC = () => {
     },
   ] : []
 
+  /* ── Bookmark Context Menu Items ── */
+  const bookmarkCtxItems: ContextMenuItem[] = bookmarkCtxMenu ? [
+    {
+      label: `Open "${bookmarkCtxMenu.bookmark.label}"`,
+      action: () => {
+        goToPath(bookmarkCtxMenu.bookmark.path)
+        setBookmarkCtxMenu(null)
+      },
+    },
+    {
+      label: 'Open in New Tab',
+      action: () => {
+        addTab(bookmarkCtxMenu.bookmark.path)
+        setBookmarkCtxMenu(null)
+      },
+    },
+    { label: '', action: () => {}, separator: true },
+    {
+      label: 'Remove Bookmark',
+      danger: true,
+      action: () => {
+        const next = bookmarks.filter((_, j) => j !== bookmarkCtxMenu.index)
+        setBookmarks(next)
+        preferences.bookmarks = next
+        setBookmarkCtxMenu(null)
+      },
+    },
+  ] : []
+
   const selectedArchive = useMemo(() => {
     if (selectedFiles.size === 1 && !archiveContext) {
       const selectedPath = Array.from(selectedFiles)[0]
@@ -1273,7 +1303,11 @@ export const Home: React.FC = () => {
                   key={i}
                   className="sidebar-item"
                   onClick={() => goToPath(b.path)}
-                  title={b.path}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setBookmarkCtxMenu({ x: e.clientX, y: e.clientY, index: i, bookmark: b })
+                  }}
+                  title={`${b.label}\n${b.path}\nRight-click for options`}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 6 }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1283,6 +1317,7 @@ export const Home: React.FC = () => {
                   <button
                     className="sidebar-item-del"
                     title={`Remove bookmark "${b.label}"`}
+                    aria-label={`Remove bookmark ${b.label}`}
                     onClick={(e) => {
                       e.stopPropagation()
                       const next = bookmarks.filter((_, j) => j !== i)
@@ -1292,12 +1327,16 @@ export const Home: React.FC = () => {
                     style={{
                       all: 'unset',
                       cursor: 'pointer',
-                      padding: '2px 5px',
+                      padding: '2px 6px',
                       borderRadius: 4,
                       color: 'var(--text-muted)',
                       fontSize: 12,
+                      fontWeight: 700,
                       lineHeight: 1,
-                      opacity: 0.6,
+                      opacity: 0.75,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
                       transition: 'all 0.15s ease',
                     }}
                     onMouseEnter={(e) => {
@@ -1306,7 +1345,7 @@ export const Home: React.FC = () => {
                       e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.opacity = '0.6'
+                      e.currentTarget.style.opacity = '0.75'
                       e.currentTarget.style.color = 'var(--text-muted)'
                       e.currentTarget.style.background = 'transparent'
                     }}
@@ -1757,6 +1796,16 @@ export const Home: React.FC = () => {
       {/* Tab Context Menu */}
       {tabCtxMenu && (
         <ContextMenu x={tabCtxMenu.x} y={tabCtxMenu.y} items={tabCtxItems} onClose={() => setTabCtxMenu(null)} />
+      )}
+
+      {/* Bookmark Context Menu */}
+      {bookmarkCtxMenu && (
+        <ContextMenu
+          x={bookmarkCtxMenu.x}
+          y={bookmarkCtxMenu.y}
+          items={bookmarkCtxItems}
+          onClose={() => setBookmarkCtxMenu(null)}
+        />
       )}
 
       {dragOver && (

@@ -6,6 +6,7 @@ export interface ContextMenuItem {
   disabled?: boolean
   separator?: boolean
   shortcut?: string
+  danger?: boolean
 }
 
 interface ContextMenuProps {
@@ -58,7 +59,8 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }
         return (
           <button
             key={i}
-            className="context-menu-item"
+            className={`context-menu-item ${item.danger ? 'context-menu-item-danger' : ''}`}
+            style={item.danger ? { color: '#ef4444' } : undefined}
             disabled={item.disabled}
             onClick={() => { item.action(); onClose() }}
           >
