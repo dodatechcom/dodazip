@@ -294,7 +294,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 type="text"
                 value={serverUrl}
                 onChange={handleServerUrlChange}
-                placeholder="https://your-domain.com/dodazip-updates.json (optional Cloudflare / CDN)"
+                placeholder="https://updates.dodatech.com/latest.json (Default: Cloudflare R2)"
                 style={{
                   width: '100%',
                   padding: '7px 10px',
@@ -307,7 +307,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 }}
               />
               <span style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginTop: 3 }}>
-                {t('settings.updateServerDesc', 'Default: Official GitHub Releases. Supports custom Cloudflare / hosting endpoints.')}
+                Primary: Cloudflare R2 (<code>updates.dodatech.com</code>) with seamless GitHub fallback.
               </span>
             </div>
 

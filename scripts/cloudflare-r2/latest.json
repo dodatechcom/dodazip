@@ -1,0 +1,7 @@
+{
+  "version": "0.1.0",
+  "downloadUrl": "https://updates.dodatech.com/releases/DodaZip-Setup-v0.1.0.exe",
+  "portableUrl": "https://updates.dodatech.com/releases/DodaZip-v0.1.0-windows-x64-portable.zip",
+  "releaseDate": "2026-11-08",
+  "notes": "DodaZip v0.1.0\n- High-Trust Vault Engine (.dzip)\n- AES-256 military encryption & BLAKE3 integrity verification\n- Multi-language interface (10 languages)\n- Windows Explorer context menu & SendTo integration"
+}

@@ -1,6 +1,8 @@
 import { preferences } from './preferences'
 
 export const CURRENT_VERSION = '0.1.0'
+export const DEFAULT_UPDATE_SERVER = 'https://updates.dodatech.com/latest.json'
+export const GITHUB_FALLBACK_API = 'https://api.github.com/repos/dodatechcom/dodazip/releases/latest'
 
 export interface UpdateInfo {
   hasUpdate: boolean
@@ -35,97 +37,109 @@ export function compareVersions(a: string, b: string): number {
   return 0
 }
 
-/**
- * Checks for updates from GitHub or custom user-defined update server
- */
-export async function checkForUpdates(customUrl?: string): Promise<UpdateInfo> {
-  const currentVersion = CURRENT_VERSION
-  const targetUrl = (customUrl || preferences.updateServer || '').trim()
-
+async function fetchFromR2OrCustom(url: string, currentVersion: string): Promise<UpdateInfo | null> {
   try {
-    if (targetUrl) {
-      // Query custom server (e.g. Cloudflare Worker, shared hosting server)
-      const res = await fetch(targetUrl, {
-        headers: { Accept: 'application/json' },
-        cache: 'no-cache',
-      })
-      if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}: ${res.statusText}`)
-      }
-      const data = await res.json()
-
-      // Support either GitHub release format or custom { version, downloadUrl, notes } format
-      const latestVersion = (data.tag_name || data.version || '').replace(/^v/i, '')
-      const downloadUrl =
-        data.downloadUrl ||
-        data.download_url ||
-        data.html_url ||
-        (Array.isArray(data.assets) && data.assets[0]?.browser_download_url) ||
-        'https://github.com/dodatechcom/dodazip/releases/latest'
-
-      const releaseNotes = data.notes || data.body || data.description || ''
-
-      const hasUpdate = compareVersions(latestVersion, currentVersion) > 0
-
-      return {
-        hasUpdate,
-        currentVersion,
-        latestVersion: latestVersion || currentVersion,
-        downloadUrl,
-        releaseNotes,
-      }
-    }
-
-    // Default: Check Official GitHub Releases API
-    const res = await fetch('https://api.github.com/repos/dodatechcom/dodazip/releases/latest', {
-      headers: {
-        Accept: 'application/vnd.github.v3+json',
-      },
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json' },
       cache: 'no-cache',
     })
-
-    if (!res.ok) {
-      if (res.status === 404) {
-        return {
-          hasUpdate: false,
-          currentVersion,
-          latestVersion: currentVersion,
-          downloadUrl: 'https://github.com/dodatechcom/dodazip/releases',
-          releaseNotes: 'No releases published yet.',
-        }
-      }
-      throw new Error(`GitHub API error ${res.status}`)
-    }
-
+    if (!res.ok) return null
     const data = await res.json()
-    const rawTag = (data.tag_name || '').trim()
-    const latestVersion = rawTag.replace(/^v/i, '')
+    const latestVersion = (data.tag_name || data.version || '').replace(/^v/i, '')
+    if (!latestVersion) return null
 
-    // Find installer asset if available
-    let downloadUrl = data.html_url || 'https://github.com/dodatechcom/dodazip/releases/latest'
-    if (Array.isArray(data.assets) && data.assets.length > 0) {
-      const exeAsset = data.assets.find((a: any) => a.name?.endsWith('.exe'))
-      if (exeAsset?.browser_download_url) {
-        downloadUrl = exeAsset.browser_download_url
-      }
-    }
+    const downloadUrl =
+      data.downloadUrl ||
+      data.download_url ||
+      data.html_url ||
+      (Array.isArray(data.assets) && data.assets[0]?.browser_download_url) ||
+      `https://updates.dodatech.com/releases/DodaZip-Setup-v${latestVersion}.exe`
 
+    const releaseNotes = data.notes || data.body || data.description || ''
     const hasUpdate = compareVersions(latestVersion, currentVersion) > 0
 
     return {
       hasUpdate,
       currentVersion,
-      latestVersion: latestVersion || currentVersion,
+      latestVersion,
       downloadUrl,
-      releaseNotes: data.body || '',
+      releaseNotes,
     }
+  } catch {
+    return null
+  }
+}
+
+async function fetchFromGitHub(currentVersion: string): Promise<UpdateInfo> {
+  const res = await fetch(GITHUB_FALLBACK_API, {
+    headers: { Accept: 'application/vnd.github.v3+json' },
+    cache: 'no-cache',
+  })
+  if (!res.ok) {
+    if (res.status === 404) {
+      return {
+        hasUpdate: false,
+        currentVersion,
+        latestVersion: currentVersion,
+        downloadUrl: 'https://github.com/dodatechcom/dodazip/releases',
+        releaseNotes: 'No releases published yet.',
+      }
+    }
+    throw new Error(`GitHub API error ${res.status}`)
+  }
+
+  const data = await res.json()
+  const rawTag = (data.tag_name || '').trim()
+  const latestVersion = rawTag.replace(/^v/i, '')
+
+  let downloadUrl = data.html_url || 'https://github.com/dodatechcom/dodazip/releases/latest'
+  if (Array.isArray(data.assets) && data.assets.length > 0) {
+    const exeAsset = data.assets.find((a: any) => a.name?.endsWith('.exe'))
+    if (exeAsset?.browser_download_url) {
+      downloadUrl = exeAsset.browser_download_url
+    }
+  }
+
+  const hasUpdate = compareVersions(latestVersion, currentVersion) > 0
+  return {
+    hasUpdate,
+    currentVersion,
+    latestVersion: latestVersion || currentVersion,
+    downloadUrl,
+    releaseNotes: data.body || '',
+  }
+}
+
+/**
+ * Checks for updates:
+ * 1. Custom URL if specified by user
+ * 2. Cloudflare R2 bucket endpoint (https://updates.dodatech.com/latest.json)
+ * 3. Graceful fallback to GitHub Releases API (rate-limit safe)
+ */
+export async function checkForUpdates(customUrl?: string): Promise<UpdateInfo> {
+  const currentVersion = CURRENT_VERSION
+  const userUrl = (customUrl || preferences.updateServer || '').trim()
+
+  // 1. If user specified a custom URL, try that first
+  if (userUrl) {
+    const customResult = await fetchFromR2OrCustom(userUrl, currentVersion)
+    if (customResult) return customResult
+  }
+
+  // 2. Primary: Cloudflare R2 bucket at updates.dodatech.com
+  const r2Result = await fetchFromR2OrCustom(DEFAULT_UPDATE_SERVER, currentVersion)
+  if (r2Result) return r2Result
+
+  // 3. Fallback: GitHub Releases API
+  try {
+    return await fetchFromGitHub(currentVersion)
   } catch (err: any) {
     return {
       hasUpdate: false,
       currentVersion,
       latestVersion: currentVersion,
-      downloadUrl: 'https://github.com/dodatechcom/dodazip/releases/latest',
-      error: err?.message || 'Could not connect to update server',
+      downloadUrl: 'https://updates.dodatech.com',
+      error: err?.message || 'Could not connect to update servers (R2 / GitHub)',
     }
   }
 }
