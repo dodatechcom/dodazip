@@ -1264,16 +1264,55 @@ export const Home: React.FC = () => {
 
           {bookmarks.length > 0 && (
             <div className="sidebar-section">
-              <div className="sidebar-heading">Bookmarks</div>
+              <div className="sidebar-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Bookmarks</span>
+                <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{bookmarks.length}</span>
+              </div>
               {bookmarks.map((b, i) => (
                 <div
                   key={i}
                   className="sidebar-item"
                   onClick={() => goToPath(b.path)}
                   title={b.path}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 6 }}
                 >
-                  <span className="sidebar-icon">⭐</span>
-                  <span className="sidebar-label">{b.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span className="sidebar-icon">⭐</span>
+                    <span className="sidebar-label">{b.label}</span>
+                  </div>
+                  <button
+                    className="sidebar-item-del"
+                    title={`Remove bookmark "${b.label}"`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const next = bookmarks.filter((_, j) => j !== i)
+                      setBookmarks(next)
+                      preferences.bookmarks = next
+                    }}
+                    style={{
+                      all: 'unset',
+                      cursor: 'pointer',
+                      padding: '2px 5px',
+                      borderRadius: 4,
+                      color: 'var(--text-muted)',
+                      fontSize: 12,
+                      lineHeight: 1,
+                      opacity: 0.6,
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.opacity = '1'
+                      e.currentTarget.style.color = '#ef4444'
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.opacity = '0.6'
+                      e.currentTarget.style.color = 'var(--text-muted)'
+                      e.currentTarget.style.background = 'transparent'
+                    }}
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
             </div>
