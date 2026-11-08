@@ -6,6 +6,8 @@ const KEYS = {
   theme: 'dodazip_theme',
   bookmarks: 'dodazip_bookmarks',
   tabs: 'dodazip_saved_tabs',
+  autoCheckUpdates: 'dodazip_auto_check_updates',
+  updateServer: 'dodazip_update_server',
 } as const
 
 type Theme = 'light' | 'dark' | 'auto'
@@ -48,6 +50,21 @@ export const preferences = {
   },
   set savedTabs(v: Array<{ id: string; path: string; label: string }>) {
     localStorage.setItem(KEYS.tabs, JSON.stringify(v))
+  },
+
+  get autoCheckUpdates(): boolean {
+    const val = localStorage.getItem(KEYS.autoCheckUpdates)
+    return val === null ? true : val === 'true'
+  },
+  set autoCheckUpdates(v: boolean) {
+    localStorage.setItem(KEYS.autoCheckUpdates, String(v))
+  },
+
+  get updateServer(): string {
+    return localStorage.getItem(KEYS.updateServer) || ''
+  },
+  set updateServer(v: string) {
+    localStorage.setItem(KEYS.updateServer, v)
   },
 }
 

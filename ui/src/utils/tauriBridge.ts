@@ -124,17 +124,24 @@ export function safeListen<T>(event: string, handler: EventCallback<T>): Promise
 export async function safePickDirectory(defaultPath?: string): Promise<string | null> {
   if (isTauri()) {
     try {
-      const { open } = await import('@tauri-apps/plugin-dialog')
-      const selected = await open({
-        directory: true,
-        multiple: false,
-        defaultPath,
-      })
-      if (typeof selected === 'string') return selected
-      return null
+      const res = await safeInvoke<string | null>('pick_folder_dialog', { defaultPath })
+      if (res) return res
     } catch (e) {
-      console.error('Failed to open native dialog', e)
+      console.warn('Backend pick_folder_dialog failed, falling back to plugin-dialog:', e)
+      try {
+        const { open } = await import('@tauri-apps/plugin-dialog')
+        const selected = await open({
+          directory: true,
+          multiple: false,
+          defaultPath,
+        })
+        if (typeof selected === 'string') return selected
+        return null
+      } catch (err) {
+        console.error('Failed to open native directory dialog', err)
+      }
     }
+    return null
   }
 
   // Browser fallback prompt
@@ -142,7 +149,54 @@ export async function safePickDirectory(defaultPath?: string): Promise<string | 
   return choice ? choice.trim() : null
 }
 
+export async function safePickArchiveOrFile(defaultPath?: string): Promise<string | null> {
+  if (isTauri()) {
+    try {
+      const res = await safeInvoke<string | null>('pick_archive_file', { defaultPath })
+      if (res) return res
+    } catch (e) {
+      console.warn('Backend pick_archive_file failed, falling back to plugin-dialog:', e)
+      try {
+        const { open } = await import('@tauri-apps/plugin-dialog')
+        const selected = await open({
+          directory: false,
+          multiple: false,
+          defaultPath,
+          filters: [
+            {
+              name: 'Supported Archives',
+              extensions: ['zip', 'dzip', '7z', 'rar', 'tar', 'gz', 'bz2', 'xz', 'tgz', 'tbz2', 'txz'],
+            },
+            {
+              name: 'All Files',
+              extensions: ['*'],
+            },
+          ],
+        })
+        if (typeof selected === 'string') return selected
+        return null
+      } catch (err) {
+        console.error('Failed to open native archive dialog', err)
+      }
+    }
+    return null
+  }
+
+  // Browser fallback prompt
+  const choice = window.prompt('Enter archive file path to open:', defaultPath || 'C:\\projects\\DodaZip\\backup_vault.dzip')
+  return choice ? choice.trim() : null
+}
+
 export function safeOpenUrl(url: string): void {
+  if (isTauri()) {
+    safeInvoke('open_in_browser', { url }).catch(() => {
+      if (typeof window !== 'undefined') {
+        window.open(url, '_blank', 'noopener,noreferrer')
+      }
+    })
+    return
+  }
+
   if (typeof window !== 'undefined') {
     window.open(url, '_blank', 'noopener,noreferrer')
   }

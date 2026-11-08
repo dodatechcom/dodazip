@@ -1077,6 +1077,57 @@ fn register_windows_association() {
     }
 }
 
+#[tauri::command]
+async fn open_in_browser(url: String) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        std::process::Command::new("cmd")
+            .args(&["/c", "start", "", &url])
+            .creation_flags(CREATE_NO_WINDOW)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(not(windows))]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+}
+
+#[tauri::command]
+async fn pick_archive_file(app: AppHandle, default_path: Option<String>) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let mut builder = app.dialog().file()
+        .add_filter("Supported Archives (*.zip, *.dzip, *.7z, *.rar, *.tar, *.gz, *.bz2, *.xz)", &["zip", "dzip", "7z", "rar", "tar", "gz", "bz2", "xz", "tgz", "tbz2", "txz"])
+        .add_filter("All Files (*.*)", &["*"]);
+
+    if let Some(dp) = default_path {
+        builder = builder.set_directory(PathBuf::from(dp));
+    }
+
+    let file_opt = builder.blocking_pick_file();
+    Ok(file_opt.map(|f| f.to_string()))
+}
+
+#[tauri::command]
+async fn pick_folder_dialog(app: AppHandle, default_path: Option<String>) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let mut builder = app.dialog().file();
+
+    if let Some(dp) = default_path {
+        builder = builder.set_directory(PathBuf::from(dp));
+    }
+
+    let folder_opt = builder.blocking_pick_folder();
+    Ok(folder_opt.map(|f| f.to_string()))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1110,6 +1161,9 @@ pub fn run() {
             delete_file_secure,
             find_duplicate_files,
             split_archive,
+            open_in_browser,
+            pick_archive_file,
+            pick_folder_dialog,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

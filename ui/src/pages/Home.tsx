@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { safeInvoke as invoke, safeStartDrag } from '../utils/tauriBridge'
+import { safeInvoke as invoke, safeStartDrag, safePickArchiveOrFile, safeOpenUrl } from '../utils/tauriBridge'
 import { FileInfo, Bookmark, DuplicateGroup, TabState, ArchiveEntry, ArchiveContext } from '../types'
 import {
   formatSize,
@@ -11,10 +11,12 @@ import {
   getArchiveDirectoryItems,
 } from '../utils/helpers'
 import { preferences, resolveTheme } from '../utils/preferences'
+import { checkForUpdates, UpdateInfo } from '../utils/updateChecker'
 import { Toolbar } from '../components/Toolbar'
 import { ContextMenu, ContextMenuItem } from '../components/ContextMenu'
 import { Message } from '../components/Message'
 import { AboutModal } from '../components/AboutModal'
+import { SettingsModal } from '../components/SettingsModal'
 import { CompressModal } from '../components/CompressModal'
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal'
 import {
@@ -93,6 +95,21 @@ export const Home: React.FC = () => {
   const [duplicates, setDuplicates] = useState<DuplicateGroup[] | null>(null)
   const [findingDups, setFindingDups] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [updateNotice, setUpdateNotice] = useState<UpdateInfo | null>(null)
+
+  // Auto-check for updates on application startup
+  useEffect(() => {
+    if (preferences.autoCheckUpdates) {
+      checkForUpdates()
+        .then((res) => {
+          if (res.hasUpdate) {
+            setUpdateNotice(res)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [])
   const [compressModal, setCompressModal] = useState<{
     isOpen: boolean
     selectedFiles: string[]
@@ -595,6 +612,77 @@ export const Home: React.FC = () => {
     return formatSize(total)
   }, [selectedFiles, displayedFiles])
 
+  /* ── Double Click: Virtual folder navigation or archive inspection ── */
+  const handleRowDoubleClick = useCallback((file: FileInfo) => {
+    if (archiveContext) {
+      if (file.is_dir) {
+        setArchiveContext({
+          ...archiveContext,
+          innerPath: file.path,
+        })
+        setFilterQuery('')
+        setSelectedFiles(new Set())
+      } else {
+        navigate('/extract', {
+          state: {
+            archivePath: archiveContext.archivePath,
+            selectedItems: [file.path],
+          }
+        })
+      }
+      return
+    }
+
+    if (file.is_dir) {
+      loadDirectory(file.path, true)
+    } else if (isArchive(file.name)) {
+      openArchiveInBrowser(file.path, file.name)
+    }
+  }, [archiveContext, navigate, loadDirectory, isArchive, openArchiveInBrowser])
+
+  /* ── Universal Open Action: Opens selected archive/folder, or prompts native file dialog ── */
+  const handleOpenAction = useCallback(async () => {
+    // 1. If inside an archive
+    if (archiveContext) {
+      if (selectedFiles.size > 0) {
+        const first = displayedFiles.find(f => selectedFiles.has(f.path))
+        if (first) {
+          handleRowDoubleClick(first)
+          return
+        }
+      }
+      // If nothing selected inside archive, allow picking an archive from disk
+      const picked = await safePickArchiveOrFile(getParentPath(archiveContext.archivePath) || currentPath)
+      if (picked) {
+        if (isArchive(picked)) {
+          openArchiveInBrowser(picked, getPathBaseName(picked))
+        } else {
+          loadDirectory(picked, true)
+        }
+      }
+      return
+    }
+
+    // 2. If in regular file browser with selection
+    if (selectedFiles.size > 0) {
+      const first = displayedFiles.find(f => selectedFiles.has(f.path))
+      if (first) {
+        handleRowDoubleClick(first)
+        return
+      }
+    }
+
+    // 3. If nothing selected, launch native OS file dialog to choose an archive
+    const picked = await safePickArchiveOrFile(currentPath)
+    if (picked) {
+      if (isArchive(picked)) {
+        openArchiveInBrowser(picked, getPathBaseName(picked))
+      } else {
+        loadDirectory(picked, true)
+      }
+    }
+  }, [archiveContext, selectedFiles, displayedFiles, handleRowDoubleClick, currentPath, isArchive, openArchiveInBrowser, loadDirectory])
+
   /* ── Keyboard Shortcuts ── */
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -651,9 +739,15 @@ export const Home: React.FC = () => {
         return
       }
 
+      if (e.key === 'F1') {
+        e.preventDefault()
+        safeOpenUrl('https://dodatech.com/docs/dodazip/')
+        return
+      }
+
       if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault()
-        loadDirectory(currentPath || undefined, false)
+        handleOpenAction()
         return
       }
 
@@ -839,34 +933,6 @@ export const Home: React.FC = () => {
     setFindingDups(false)
   }
 
-  /* ── Double Click: Virtual folder navigation or archive inspection ── */
-  const handleRowDoubleClick = (file: FileInfo) => {
-    if (archiveContext) {
-      if (file.is_dir) {
-        setArchiveContext({
-          ...archiveContext,
-          innerPath: file.path,
-        })
-        setFilterQuery('')
-        setSelectedFiles(new Set())
-      } else {
-        navigate('/extract', {
-          state: {
-            archivePath: archiveContext.archivePath,
-            selectedItems: [file.path],
-          }
-        })
-      }
-      return
-    }
-
-    if (file.is_dir) {
-      loadDirectory(file.path, true)
-    } else if (isArchive(file.name)) {
-      openArchiveInBrowser(file.path, file.name)
-    }
-  }
-
   const handleContextMenu = (e: React.MouseEvent, file: FileInfo) => {
     e.preventDefault()
     if (!selectedFiles.has(file.path)) {
@@ -1044,13 +1110,66 @@ export const Home: React.FC = () => {
         }
       }}
     >
+      {/* ═══ Update Available Notification Banner ═══ */}
+      {updateNotice && (
+        <div
+          style={{
+            background: 'linear-gradient(90deg, #1d4ed8 0%, #2563eb 100%)',
+            color: '#ffffff',
+            padding: '7px 18px',
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+            zIndex: 100,
+            borderBottom: '1px solid rgba(255,255,255,0.15)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span>🚀</span>
+            <span>
+              <strong>DodaZip v{updateNotice.latestVersion}</strong> is available!
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => safeOpenUrl(updateNotice.downloadUrl)}
+              style={{
+                background: '#ffffff',
+                color: '#1d4ed8',
+                border: 'none',
+                padding: '3px 12px',
+                borderRadius: 4,
+                fontSize: 11,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Download Update
+            </button>
+            <button
+              onClick={() => setUpdateNotice(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255,255,255,0.8)',
+                cursor: 'pointer',
+                fontSize: 14,
+                padding: '0 4px',
+              }}
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ═══ Top High-Trust Toolbar ═══ */}
       <Toolbar
         onNew={() => openCompressModal(Array.from(selectedFiles))}
-        onOpen={() => {
-          if (archiveContext) exitArchiveMode()
-          else loadDirectory(currentPath || undefined, false)
-        }}
+        onOpen={handleOpenAction}
         onAdd={() => {
           if (selectedFiles.size > 0)
             openCompressModal(Array.from(selectedFiles))
@@ -1064,6 +1183,7 @@ export const Home: React.FC = () => {
             navigate('/extract')
           }
         }}
+        onSettings={() => setShowSettings(true)}
         onAbout={() => setShowAbout(true)}
         addDisabled={selectedFiles.size === 0}
         isArchiveMode={Boolean(archiveContext)}
@@ -1610,6 +1730,12 @@ export const Home: React.FC = () => {
       )}
 
       <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
+
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        onThemeChange={(newTheme) => setTheme(newTheme)}
+      />
 
       <CompressModal
         isOpen={compressModal.isOpen}
