@@ -7,6 +7,7 @@ node_modules/
 ui/dist/
 dist/
 build/
+R2Bucket/releases/
 
 # Tauri generated files
 /src-tauri/gen/schemas/

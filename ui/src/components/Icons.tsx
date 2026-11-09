@@ -269,6 +269,21 @@ export const IconGlobe: React.FC<IconProps> = ({ size = 16 }) => (
   </svg>
 )
 
+export const IconDisc: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <circle cx="12" cy="12" r="9" fill="#0284c7" fillOpacity="0.12" stroke="#0284c7" strokeWidth="1.6" />
+    <circle cx="12" cy="12" r="3" stroke="#0284c7" strokeWidth="1.6" />
+    <path d="M12 3v2M12 19v2" stroke="#0284c7" strokeWidth="1.4" strokeLinecap="round" strokeOpacity="0.5" />
+  </svg>
+)
+
+export const IconPackage: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <path d="M16.5 9.4L7.55 4.24a1.78 1.78 0 0 0-1.8 0L2.8 5.94a1.8 1.8 0 0 0-.9 1.56v7a1.8 1.8 0 0 0 .9 1.56l2.95 1.7a1.78 1.78 0 0 0 1.8 0l8.95-5.16a1.8 1.8 0 0 0 .9-1.56v-7a1.8 1.8 0 0 0-.9-1.56z" fill="#059669" fillOpacity="0.12" stroke="#059669" strokeWidth="1.5"/>
+    <path d="M2.3 6.8l9.7 5.6 9.7-5.6M12 12.4v9.6" stroke="#059669" strokeWidth="1.5"/>
+  </svg>
+)
+
 export const FileRowIcon: React.FC<{ name: string; isDir: boolean }> = ({ name, isDir }) => {
   if (isDir) return <IconFolder size={16} />
   const lower = name.toLowerCase()
@@ -278,6 +293,10 @@ export const FileRowIcon: React.FC<{ name: string; isDir: boolean }> = ({ name, 
   if (lower.endsWith('.rar')) return <IconRar size={16} />
   if (lower.endsWith('.tar') || lower.endsWith('.tgz') || lower.endsWith('.tbz2') || lower.endsWith('.txz') ||
       lower.endsWith('.tar.gz') || lower.endsWith('.tar.bz2') || lower.endsWith('.tar.xz')) return <IconTar size={16} />
+  if (lower.endsWith('.iso')) return <IconDisc size={16} />
+  if (lower.endsWith('.dmg')) return <IconDisc size={16} />
+  if (lower.endsWith('.deb') || lower.endsWith('.ar') || lower.endsWith('.a')) return <IconPackage size={16} />
+  if (lower.endsWith('.cab')) return <IconCompressed size={16} />
   if (lower.endsWith('.gz') || lower.endsWith('.bz2') || lower.endsWith('.xz')) return <IconCompressed size={16} />
   return <IconFileGeneric size={16} />
 }

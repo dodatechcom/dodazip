@@ -192,7 +192,7 @@ export const Home: React.FC = () => {
     preferences.theme = next
   }
 
-  const isArchive = (name: string) => /\.(dzip|zip|7z|rar|tar\.gz|tar\.bz2|tar\.xz|tar|gz|bz2|xz)$/i.test(name)
+  const isArchive = (name: string) => /\.(dzip|zip|7z|rar|tar\.gz|tar\.bz2|tar\.xz|tar|gz|bz2|xz|cab|deb|ar|iso|dmg)$/i.test(name)
 
   /* ── Load real directory from OS ── */
   const loadDirectory = useCallback(async (path?: string, resetFilter = false) => {
@@ -882,7 +882,7 @@ export const Home: React.FC = () => {
   }
 
   const handleConvert = async (file: FileInfo) => {
-    const dest = file.path.replace(/\.(dzip|zip|7z|rar|tar\.gz|tar\.bz2|tar\.xz|tar|gz|bz2|xz)$/i, '.zip')
+    const dest = file.path.replace(/\.(dzip|zip|7z|rar|tar\.gz|tar\.bz2|tar\.xz|tar|gz|bz2|xz|cab|deb|ar|iso|dmg)$/i, '.zip')
     if (dest === file.path) {
       const base = file.path.replace(/\.[^.]+$/, '')
       const re = prompt('Save as:', base + '.zip')

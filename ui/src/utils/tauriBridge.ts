@@ -165,7 +165,7 @@ export async function safePickArchiveOrFile(defaultPath?: string): Promise<strin
           filters: [
             {
               name: 'Supported Archives',
-              extensions: ['zip', 'dzip', '7z', 'rar', 'tar', 'gz', 'bz2', 'xz', 'tgz', 'tbz2', 'txz'],
+              extensions: ['zip', 'dzip', '7z', 'rar', 'tar', 'gz', 'bz2', 'xz', 'tgz', 'tbz2', 'txz', 'cab', 'deb', 'ar', 'iso', 'dmg'],
             },
             {
               name: 'All Files',

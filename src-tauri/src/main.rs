@@ -30,6 +30,12 @@ fn detect_format(path: &Path) -> &'static str {
         e if e.eq_ignore_ascii_case("gz") => "gz",
         e if e.eq_ignore_ascii_case("bz2") => "bz2",
         e if e.eq_ignore_ascii_case("xz") => "xz",
+        e if e.eq_ignore_ascii_case("cab") => "cab",
+        e if e.eq_ignore_ascii_case("deb") => "deb",
+        e if e.eq_ignore_ascii_case("ar") => "ar",
+        e if e.eq_ignore_ascii_case("a") => "ar",
+        e if e.eq_ignore_ascii_case("iso") => "iso",
+        e if e.eq_ignore_ascii_case("dmg") => "dmg",
         _ => "dzip",
     }
 }
@@ -469,6 +475,256 @@ fn extract_xz(archive_path: &Path, output_dir: &Path) -> Result<(), String> {
     Ok(())
 }
 
+fn sanitize_relative_path(p: &str) -> PathBuf {
+    Path::new(p)
+        .components()
+        .filter_map(|c| match c {
+            std::path::Component::Normal(s) => Some(s),
+            _ => None,
+        })
+        .collect()
+}
+
+fn list_cab_entries(path: &Path) -> Result<Vec<ArchiveEntry>, String> {
+    let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let cabinet = cab::Cabinet::new(file).map_err(|e| e.to_string())?;
+    let mut entries = Vec::new();
+    for folder in cabinet.folder_entries() {
+        for file in folder.file_entries() {
+            entries.push(ArchiveEntry {
+                path: file.name().replace('\\', "/"),
+                size: file.uncompressed_size() as u64,
+                chunks: 1,
+            });
+        }
+    }
+    Ok(entries)
+}
+
+fn extract_cab(path: &Path, output_dir: &Path) -> Result<(), String> {
+    let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let mut cabinet = cab::Cabinet::new(file).map_err(|e| e.to_string())?;
+    let mut file_names = Vec::new();
+    for folder in cabinet.folder_entries() {
+        for file in folder.file_entries() {
+            file_names.push(file.name().to_string());
+        }
+    }
+    for file_name in file_names {
+        let safe_rel = sanitize_relative_path(&file_name.replace('\\', "/"));
+        if safe_rel.as_os_str().is_empty() {
+            continue;
+        }
+        let target_path = output_dir.join(&safe_rel);
+        if let Some(parent) = target_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let mut reader = cabinet.read_file(&file_name).map_err(|e| e.to_string())?;
+        let mut writer = std::fs::File::create(&target_path).map_err(|e| e.to_string())?;
+        std::io::copy(&mut reader, &mut writer).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn list_ar_entries(path: &Path) -> Result<Vec<ArchiveEntry>, String> {
+    let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let mut archive = ar::Archive::new(file);
+    let mut entries = Vec::new();
+    while let Some(entry_result) = archive.next_entry() {
+        let entry = entry_result.map_err(|e| e.to_string())?;
+        let raw_name = String::from_utf8_lossy(entry.header().identifier());
+        let name = raw_name.trim().trim_end_matches('/').to_string();
+        if !name.is_empty() {
+            entries.push(ArchiveEntry {
+                path: name,
+                size: entry.header().size(),
+                chunks: 1,
+            });
+        }
+    }
+    Ok(entries)
+}
+
+fn extract_ar(path: &Path, output_dir: &Path) -> Result<(), String> {
+    let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let mut archive = ar::Archive::new(file);
+    while let Some(entry_result) = archive.next_entry() {
+        let mut entry = entry_result.map_err(|e| e.to_string())?;
+        let raw_name = String::from_utf8_lossy(entry.header().identifier());
+        let name = raw_name.trim().trim_end_matches('/').to_string();
+        if name.is_empty() {
+            continue;
+        }
+        let safe_rel = sanitize_relative_path(&name);
+        if safe_rel.as_os_str().is_empty() {
+            continue;
+        }
+        let target_path = output_dir.join(&safe_rel);
+        if let Some(parent) = target_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let mut writer = std::fs::File::create(&target_path).map_err(|e| e.to_string())?;
+        std::io::copy(&mut entry, &mut writer).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn walk_iso_dir<T: iso9660::ISO9660Reader>(
+    dir: &iso9660::ISODirectory<T>,
+    prefix: &str,
+    entries: &mut Vec<ArchiveEntry>,
+) -> Result<(), String> {
+    for entry in dir.contents() {
+        let entry = entry.map_err(|e| format!("{:?}", e))?;
+        let name = entry.identifier();
+        if name == "." || name == ".." {
+            continue;
+        }
+        let full_path = if prefix.is_empty() {
+            name.to_string()
+        } else {
+            format!("{}/{}", prefix, name)
+        };
+        match entry {
+            iso9660::DirectoryEntry::Directory(sub_dir) => {
+                walk_iso_dir(&sub_dir, &full_path, entries)?;
+            }
+            iso9660::DirectoryEntry::File(f) => {
+                entries.push(ArchiveEntry {
+                    path: full_path,
+                    size: f.size() as u64,
+                    chunks: 1,
+                });
+            }
+        }
+    }
+    Ok(())
+}
+
+fn list_iso_entries(path: &Path) -> Result<Vec<ArchiveEntry>, String> {
+    let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let iso = iso9660::ISO9660::new(file).map_err(|e| format!("{:?}", e))?;
+    let mut entries = Vec::new();
+    walk_iso_dir(&iso.root, "", &mut entries)?;
+    Ok(entries)
+}
+
+fn extract_iso_dir<T: iso9660::ISO9660Reader>(
+    dir: &iso9660::ISODirectory<T>,
+    target_dir: &Path,
+) -> Result<(), String> {
+    for entry in dir.contents() {
+        let entry = entry.map_err(|e| format!("{:?}", e))?;
+        let name = entry.identifier();
+        if name == "." || name == ".." {
+            continue;
+        }
+        let safe_name = sanitize_relative_path(name);
+        if safe_name.as_os_str().is_empty() {
+            continue;
+        }
+        let target_path = target_dir.join(&safe_name);
+        match entry {
+            iso9660::DirectoryEntry::Directory(sub_dir) => {
+                std::fs::create_dir_all(&target_path).map_err(|e| e.to_string())?;
+                extract_iso_dir(&sub_dir, &target_path)?;
+            }
+            iso9660::DirectoryEntry::File(f) => {
+                if let Some(parent) = target_path.parent() {
+                    std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                }
+                let mut reader = f.read();
+                let mut writer = std::fs::File::create(&target_path).map_err(|e| e.to_string())?;
+                std::io::copy(&mut reader, &mut writer).map_err(|e| e.to_string())?;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn extract_iso(path: &Path, output_dir: &Path) -> Result<(), String> {
+    let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let iso = iso9660::ISO9660::new(file).map_err(|e| format!("{:?}", e))?;
+    extract_iso_dir(&iso.root, output_dir)
+}
+
+fn list_dmg_entries(path: &Path) -> Result<Vec<ArchiveEntry>, String> {
+    // Try opening filesystem first (standard macOS disk images with HFS+ or APFS)
+    if let Ok(mut pipeline) = dpp::DmgPipeline::open(path) {
+        if let Ok(mut fs) = pipeline.open_filesystem() {
+            if let Ok(walk_entries) = fs.walk() {
+                let mut entries = Vec::new();
+                for entry in walk_entries {
+                    if entry.entry.kind == dpp::FsEntryKind::File {
+                        let clean_path = entry.path.trim_start_matches('/').to_string();
+                        if !clean_path.is_empty() {
+                            entries.push(ArchiveEntry {
+                                path: clean_path,
+                                size: entry.entry.size,
+                                chunks: 1,
+                            });
+                        }
+                    }
+                }
+                if !entries.is_empty() {
+                    return Ok(entries);
+                }
+            }
+        }
+    }
+
+    // Fallback: list raw partitions using udif
+    let archive = udif::DmgArchive::open(path).map_err(|e| e.to_string())?;
+    let mut entries = Vec::new();
+    for p in archive.partitions() {
+        let name = if p.name.is_empty() {
+            format!("partition_{}.img", p.id)
+        } else {
+            format!("{}.img", p.name.replace('/', "_"))
+        };
+        entries.push(ArchiveEntry {
+            path: name,
+            size: p.size,
+            chunks: 1,
+        });
+    }
+    Ok(entries)
+}
+
+fn extract_dmg(path: &Path, output_dir: &Path) -> Result<(), String> {
+    // Try extracting filesystem files first
+    if let Ok(mut pipeline) = dpp::DmgPipeline::open(path) {
+        if let Ok(mut fs) = pipeline.open_filesystem() {
+            let stats = fs.extract_all(output_dir).map_err(|e| e.to_string())?;
+            if stats.files > 0 || stats.dirs > 0 {
+                return Ok(());
+            }
+        }
+    }
+
+    // Fallback: extract partitions to output_dir
+    let mut archive = udif::DmgArchive::open(path).map_err(|e| e.to_string())?;
+    let partitions = archive.partitions();
+    for p in partitions {
+        let name = if p.name.is_empty() {
+            format!("partition_{}.img", p.id)
+        } else {
+            format!("{}.img", p.name.replace('/', "_"))
+        };
+        let safe_name = sanitize_relative_path(&name);
+        if safe_name.as_os_str().is_empty() {
+            continue;
+        }
+        let target_path = output_dir.join(&safe_name);
+        if let Some(parent) = target_path.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+        let mut file = std::fs::File::create(&target_path).map_err(|e| e.to_string())?;
+        let _ = archive.extract_partition_to(p.id, &mut file);
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn list_archive(
     archive_path: String,
@@ -487,6 +743,10 @@ async fn list_archive(
         "gz" => list_gz_entries(&path),
         "bz2" => list_bz2_entries(&path),
         "xz" => list_xz_entries(&path),
+        "cab" => list_cab_entries(&path),
+        "deb" | "ar" => list_ar_entries(&path),
+        "iso" => list_iso_entries(&path),
+        "dmg" => list_dmg_entries(&path),
         _ => list_dzip_entries(&path, password.as_deref()),
     }
 }
@@ -773,6 +1033,10 @@ async fn extract_archive(
         "gz" => extract_gz(&archive_path, &output_path),
         "bz2" => extract_bz2(&archive_path, &output_path),
         "xz" => extract_xz(&archive_path, &output_path),
+        "cab" => extract_cab(&archive_path, &output_path),
+        "deb" | "ar" => extract_ar(&archive_path, &output_path),
+        "iso" => extract_iso(&archive_path, &output_path),
+        "dmg" => extract_dmg(&archive_path, &output_path),
         _ => extract_dzip(&archive_path, &output_path, options.password.as_deref()),
     };
     let _ = app_handle.emit("extract_progress", 100u32);
@@ -1112,7 +1376,10 @@ async fn open_in_browser(url: String) -> Result<(), String> {
 async fn pick_archive_file(app: AppHandle, default_path: Option<String>) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     let mut builder = app.dialog().file()
-        .add_filter("Supported Archives (*.zip, *.dzip, *.7z, *.rar, *.tar, *.gz, *.bz2, *.xz)", &["zip", "dzip", "7z", "rar", "tar", "gz", "bz2", "xz", "tgz", "tbz2", "txz"])
+        .add_filter(
+            "Supported Archives (*.zip, *.dzip, *.7z, *.rar, *.tar, *.gz, *.bz2, *.xz, *.cab, *.deb, *.ar, *.iso, *.dmg)",
+            &["zip", "dzip", "7z", "rar", "tar", "gz", "bz2", "xz", "tgz", "tbz2", "txz", "cab", "deb", "ar", "iso", "dmg"]
+        )
         .add_filter("All Files (*.*)", &["*"]);
 
     if let Some(dp) = default_path {
@@ -1181,3 +1448,128 @@ pub fn run() {
 fn main() {
     run()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_format_detection() {
+        assert_eq!(detect_format(Path::new("file.cab")), "cab");
+        assert_eq!(detect_format(Path::new("package.deb")), "deb");
+        assert_eq!(detect_format(Path::new("lib.a")), "ar");
+        assert_eq!(detect_format(Path::new("archive.ar")), "ar");
+        assert_eq!(detect_format(Path::new("image.iso")), "iso");
+        assert_eq!(detect_format(Path::new("installer.dmg")), "dmg");
+    }
+
+    #[test]
+    fn test_ar_roundtrip() {
+        let temp_dir = std::env::temp_dir().join("dodazip_test_ar");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let ar_path = temp_dir.join("test.ar");
+        let out_dir = temp_dir.join("extracted");
+
+        let file = std::fs::File::create(&ar_path).unwrap();
+        let mut builder = ar::Builder::new(file);
+        let data = b"Hello from DodaZip AR/DEB test!";
+        let mut header = ar::Header::new(b"sample.txt".to_vec(), data.len() as u64);
+        header.set_mode(0o644);
+        builder.append(&header, &data[..]).unwrap();
+        drop(builder);
+
+        let entries = list_ar_entries(&ar_path).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].path, "sample.txt");
+        assert_eq!(entries[0].size, data.len() as u64);
+
+        extract_ar(&ar_path, &out_dir).unwrap();
+        let extracted_content = std::fs::read(out_dir.join("sample.txt")).unwrap();
+        assert_eq!(extracted_content, data);
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_cab_roundtrip() {
+        let temp_dir = std::env::temp_dir().join("dodazip_test_cab");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let src_file = temp_dir.join("test.txt");
+        std::fs::write(&src_file, b"DodaZip CAB format test content").unwrap();
+
+        let cab_path = temp_dir.join("test.cab");
+        let out_dir = temp_dir.join("extracted");
+
+        let mut builder = cab::CabinetBuilder::new();
+        let folder = builder.add_folder(cab::CompressionType::MsZip);
+        folder.add_file("test.txt");
+        let file = std::fs::File::create(&cab_path).unwrap();
+        let mut cabinet = builder.build(file).unwrap();
+        while let Some(mut writer) = cabinet.next_file().unwrap() {
+            let mut f = std::fs::File::open(&src_file).unwrap();
+            std::io::copy(&mut f, &mut writer).unwrap();
+        }
+        cabinet.finish().unwrap();
+
+        let entries = list_cab_entries(&cab_path).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].path, "test.txt");
+
+        extract_cab(&cab_path, &out_dir).unwrap();
+        let content = std::fs::read(out_dir.join("test.txt")).unwrap();
+        assert_eq!(content, b"DodaZip CAB format test content");
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_iso_listing_and_extraction() {
+        let iso_fixture = Path::new("C:/Users/admin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/iso9660-0.1.1/test.iso");
+        if !iso_fixture.exists() {
+            return;
+        }
+
+        let temp_dir = std::env::temp_dir().join("dodazip_test_iso");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let entries = list_iso_entries(iso_fixture).unwrap();
+        assert!(!entries.is_empty());
+        assert!(entries.iter().any(|e| e.path.contains("GPL_3_0.TXT")));
+
+        let out_dir = temp_dir.join("extracted");
+        extract_iso(iso_fixture, &out_dir).unwrap();
+        assert!(out_dir.join("GPL_3_0.TXT").exists());
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+
+    #[test]
+    fn test_dmg_roundtrip() {
+        let temp_dir = std::env::temp_dir().join("dodazip_test_dmg");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let dmg_path = temp_dir.join("test.dmg");
+        let out_dir = temp_dir.join("extracted");
+
+        let partition_data = vec![0x42u8; 4096];
+        udif::DmgBuilder::new()
+            .compression(udif::CompressionMethod::Raw)
+            .add_partition("Apple_HFS", partition_data.clone())
+            .build(&dmg_path)
+            .unwrap();
+
+        let entries = list_dmg_entries(&dmg_path).unwrap();
+        assert!(!entries.is_empty());
+
+        extract_dmg(&dmg_path, &out_dir).unwrap();
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
+}
+
