@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { IconSettings, IconGlobe, IconCheck, IconLoader, IconX } from './Icons'
+import React, { useState, useEffect, useMemo } from 'react'
+import { IconSettings, IconGlobe, IconCheck, IconLoader, IconX, IconDzip } from './Icons'
 import { useI18n, LANGUAGES, Language } from '../utils/i18n'
 import { preferences, resolveTheme } from '../utils/preferences'
 import { checkForUpdates, UpdateInfo, CURRENT_VERSION, detectOS } from '../utils/updateChecker'
-import { safeOpenUrl } from '../utils/tauriBridge'
+import { safeOpenUrl, safeInvoke } from '../utils/tauriBridge'
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -11,11 +11,48 @@ interface SettingsModalProps {
   onThemeChange?: (theme: 'light' | 'dark') => void
 }
 
+const FORMAT_SPECS: { ext: string; label: string; desc: string }[] = [
+  { ext: 'dzip', label: '.dzip', desc: 'DodaZip Secure Vault' },
+  { ext: 'zip', label: '.zip', desc: 'Standard ZIP Archive' },
+  { ext: '7z', label: '.7z', desc: '7-Zip Archive' },
+  { ext: 'rar', label: '.rar', desc: 'RAR Archive' },
+  { ext: 'tar', label: '.tar', desc: 'TAR Archive / Tarball' },
+  { ext: 'iso', label: '.iso', desc: 'ISO 9660 Disc Image' },
+  { ext: 'cab', label: '.cab', desc: 'Windows Cabinet' },
+  { ext: 'deb', label: '.deb', desc: 'Debian Linux Package' },
+  { ext: 'dmg', label: '.dmg', desc: 'Apple Disk Image' },
+  { ext: 'gz', label: '.gz', desc: 'GZIP Compressed File' },
+  { ext: 'bz2', label: '.bz2', desc: 'BZIP2 Compressed File' },
+  { ext: 'xz', label: '.xz', desc: 'XZ Compressed File' },
+]
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onThemeChange }) => {
   const { lang, setLanguage, t } = useI18n()
 
   const [autoCheck, setAutoCheck] = useState<boolean>(preferences.autoCheckUpdates)
   const [activeTheme, setActiveTheme] = useState(preferences.theme)
+
+  // Language search
+  const [langSearch, setLangSearch] = useState<string>('')
+
+  // File associations state
+  const [associations, setAssociations] = useState<Record<string, boolean>>({
+    dzip: true,
+    zip: true,
+    '7z': false,
+    rar: false,
+    tar: false,
+    iso: false,
+    cab: false,
+    deb: false,
+    dmg: false,
+    gz: false,
+    bz2: false,
+    xz: false,
+  })
+  const [loadingAssoc, setLoadingAssoc] = useState<boolean>(false)
+  const [savingAssoc, setSavingAssoc] = useState<boolean>(false)
+  const [assocSuccessMsg, setAssocSuccessMsg] = useState<string | null>(null)
 
   // Update check states
   const [checking, setChecking] = useState<boolean>(false)
@@ -26,6 +63,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       setAutoCheck(preferences.autoCheckUpdates)
       setActiveTheme(preferences.theme)
       setUpdateResult(null)
+      setLangSearch('')
+      setAssocSuccessMsg(null)
+
+      setLoadingAssoc(true)
+      safeInvoke<Record<string, boolean>>('get_file_associations')
+        .then((res) => {
+          if (res && typeof res === 'object') {
+            setAssociations((prev) => ({ ...prev, ...res }))
+          }
+        })
+        .catch((e) => console.warn('Could not load associations:', e))
+        .finally(() => setLoadingAssoc(false))
     }
   }, [isOpen])
 
@@ -39,6 +88,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     return () => window.removeEventListener('keydown', handleKey)
   }, [isOpen, onClose])
 
+  const filteredLanguages = useMemo(() => {
+    const q = langSearch.trim().toLowerCase()
+    if (!q) return LANGUAGES
+    return LANGUAGES.filter(
+      (l) =>
+        l.name.toLowerCase().includes(q) ||
+        l.nativeName.toLowerCase().includes(q) ||
+        l.code.toLowerCase().includes(q)
+    )
+  }, [langSearch])
+
   if (!isOpen) return null
 
   const handleLanguageSelect = (code: Language) => {
@@ -49,6 +109,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
     const val = e.target.checked
     setAutoCheck(val)
     preferences.autoCheckUpdates = val
+  }
+
+  const handleToggleAssociation = (ext: string) => {
+    setAssociations((prev) => ({
+      ...prev,
+      [ext]: !prev[ext],
+    }))
+  }
+
+  const handleSelectAllAssociations = (val: boolean) => {
+    const updated: Record<string, boolean> = {}
+    for (const spec of FORMAT_SPECS) {
+      updated[spec.ext] = val
+    }
+    setAssociations(updated)
+  }
+
+  const handleApplyAssociations = async () => {
+    setSavingAssoc(true)
+    setAssocSuccessMsg(null)
+    try {
+      await safeInvoke('set_file_associations', { associations })
+      setAssocSuccessMsg(t('settings.associationsApplied', 'File associations applied successfully!'))
+      setTimeout(() => setAssocSuccessMsg(null), 4000)
+    } catch (err: any) {
+      console.error('Failed to apply associations:', err)
+    } finally {
+      setSavingAssoc(false)
+    }
   }
 
   const handleCheckUpdatesNow = async () => {
@@ -98,8 +187,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       <div
         style={{
           width: '100%',
-          maxWidth: 580,
-          maxHeight: '90vh',
+          maxWidth: 640,
+          maxHeight: '92vh',
           background: 'var(--bg-surface)',
           border: '1px solid var(--border)',
           borderRadius: 12,
@@ -129,7 +218,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 {t('settings.title', 'Settings')}
               </div>
               <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                {t('settings.subtitle', 'Preferences, Updates & Language')}
+                {t('settings.subtitle', 'Preferences, Updates & Associations')}
               </div>
             </div>
           </div>
@@ -157,10 +246,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             overflowY: 'auto',
             display: 'flex',
             flexDirection: 'column',
-            gap: 24,
+            gap: 22,
           }}
         >
-          {/* Section 1: Change Language (i18n) */}
+          {/* Section 1: Interface Language (88 Languages) */}
           <div
             style={{
               background: 'var(--bg-card)',
@@ -169,24 +258,62 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
               padding: 16,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <IconGlobe size={18} />
-              <span style={{ fontWeight: 600, fontSize: 14 }}>
-                {t('settings.language', 'Interface Language (i18n)')}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <IconGlobe size={18} />
+                <span style={{ fontWeight: 600, fontSize: 14 }}>
+                  {t('settings.language', 'Interface Language (88 Languages)')}
+                </span>
+              </div>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  borderRadius: 10,
+                  background: 'rgba(59, 130, 246, 0.1)',
+                  color: 'var(--accent, #3b82f6)',
+                }}
+              >
+                {LANGUAGES.find((l) => l.code === lang)?.flag} {LANGUAGES.find((l) => l.code === lang)?.nativeName}
               </span>
             </div>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px 0' }}>
               {t('settings.languageDesc', 'Select your preferred language for the DodaZip interface')}
             </p>
 
+            {/* Search Input for Languages */}
+            <div style={{ marginBottom: 10 }}>
+              <input
+                type="text"
+                value={langSearch}
+                onChange={(e) => setLangSearch(e.target.value)}
+                placeholder={t('settings.languageSearch', 'Search language by name or native name...')}
+                style={{
+                  width: '100%',
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border-light)',
+                  background: 'var(--bg-surface)',
+                  color: 'var(--text-primary)',
+                  fontSize: 12,
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            {/* Scrollable Language Grid */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))',
-                gap: 8,
+                gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
+                gap: 6,
+                maxHeight: 180,
+                overflowY: 'auto',
+                paddingRight: 4,
               }}
             >
-              {LANGUAGES.map((l) => {
+              {filteredLanguages.map((l) => {
                 const isSelected = lang === l.code
                 return (
                   <button
@@ -194,37 +321,176 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                     onClick={() => handleLanguageSelect(l.code)}
                     style={{
                       display: 'flex',
-                      flexDirection: 'column',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '8px 6px',
-                      borderRadius: 8,
+                      gap: 8,
+                      padding: '6px 10px',
+                      borderRadius: 6,
                       border: isSelected
-                        ? '2px solid var(--accent, #3b82f6)'
+                        ? '1.5px solid var(--accent, #3b82f6)'
                         : '1px solid var(--border-light)',
                       background: isSelected
-                        ? 'rgba(59, 130, 246, 0.12)'
+                        ? 'rgba(59, 130, 246, 0.15)'
                         : 'var(--bg-surface)',
                       cursor: 'pointer',
                       color: 'var(--text-primary)',
-                      transition: 'all 0.15s ease',
+                      textAlign: 'left',
+                      transition: 'all 0.1s ease',
                       outline: 'none',
                     }}
                   >
-                    <span style={{ fontSize: 20, marginBottom: 2 }}>{l.flag}</span>
-                    <span style={{ fontSize: 12, fontWeight: isSelected ? 700 : 500 }}>
-                      {l.nativeName}
-                    </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
-                      {l.name}
-                    </span>
+                    <span style={{ fontSize: 16 }}>{l.flag}</span>
+                    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: 12, fontWeight: isSelected ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {l.nativeName}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {l.name}
+                      </div>
+                    </div>
                   </button>
                 )
               })}
             </div>
           </div>
 
-          {/* Section 2: Check for Updates */}
+          {/* Section 2: File Associations (Default Handler) */}
+          <div
+            style={{
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border-light)',
+              borderRadius: 10,
+              padding: 16,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <IconDzip size={18} />
+                <span style={{ fontWeight: 600, fontSize: 14 }}>
+                  {t('settings.associations', 'File Associations (Default Handler)')}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={() => handleSelectAllAssociations(true)}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-light)',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {t('settings.selectAll', 'Select All')}
+                </button>
+                <button
+                  onClick={() => handleSelectAllAssociations(false)}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border-light)',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {t('settings.clearAll', 'Clear All')}
+                </button>
+              </div>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
+              {t('settings.associationsDesc', 'Choose which archive and image formats automatically open in DodaZip')}
+            </p>
+
+            {loadingAssoc ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
+                <IconLoader size={14} /> Loading system associations...
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
+                  gap: 8,
+                }}
+              >
+                {FORMAT_SPECS.map((item) => {
+                  const isChecked = !!associations[item.ext]
+                  return (
+                    <label
+                      key={item.ext}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '6px 10px',
+                        borderRadius: 6,
+                        border: isChecked
+                          ? '1px solid rgba(59, 130, 246, 0.4)'
+                          : '1px solid var(--border-light)',
+                        background: isChecked
+                          ? 'rgba(59, 130, 246, 0.08)'
+                          : 'var(--bg-surface)',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        transition: 'all 0.1s ease',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => handleToggleAssociation(item.ext)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <div style={{ overflow: 'hidden' }}>
+                        <div style={{ fontWeight: 600, fontSize: 12, color: isChecked ? 'var(--accent, #3b82f6)' : 'var(--text-primary)' }}>
+                          {item.label}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.desc}
+                        </div>
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Apply Associations Action Button & Status */}
+            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+              <button
+                onClick={handleApplyAssociations}
+                disabled={savingAssoc}
+                className="action-btn"
+                style={{
+                  padding: '7px 16px',
+                  borderRadius: 6,
+                  background: 'var(--accent, #3b82f6)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  cursor: savingAssoc ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                {savingAssoc && <IconLoader size={14} />}
+                {t('settings.applyAssociations', 'Apply File Associations')}
+              </button>
+
+              {assocSuccessMsg && (
+                <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <IconCheck size={14} /> {assocSuccessMsg}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Section 3: Software Updates */}
           <div
             style={{
               background: 'var(--bg-card)',
@@ -296,7 +562,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             </div>
 
             {/* Action button & status */}
-            <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
               <button
                 onClick={handleCheckUpdatesNow}
                 disabled={checking}
@@ -394,7 +660,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
             )}
           </div>
 
-          {/* Section 3: Appearance & Documentation */}
+          {/* Section 4: General Appearance & Help */}
           <div
             style={{
               background: 'var(--bg-card)',

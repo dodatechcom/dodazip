@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "releaseDate": "2026-11-08",
+  "releaseDate": "2026-11-09",
   "downloadUrl": "https://updates.dodatech.com/dodazip/releases/windows/DodaZip-Setup-v0.1.0.exe",
   "platforms": {
     "windows": {
@@ -15,5 +15,5 @@
       "dmg": "https://updates.dodatech.com/dodazip/releases/macos/DodaZip-v0.1.0.dmg"
     }
   },
-  "notes": "DodaZip v0.1.0\n- High-Trust Vault Engine (.dzip)\n- AES-256 military encryption & BLAKE3 integrity verification\n- Multi-language interface (10 languages)\n- Cross-platform support for Windows, Linux & macOS"
+  "notes": "DodaZip v0.1.0\n- High-Trust Vault Engine (.dzip)\n- AES-256 military encryption & BLAKE3 integrity verification\n- Full 88-language localization suite with search filter\n- File association manager in Settings for archive formats (.dzip, .zip, .7z, .iso, etc.)\n- High-definition 3D vault icon for .dzip file type\n- Cross-platform support for Windows, Linux & macOS"
 }

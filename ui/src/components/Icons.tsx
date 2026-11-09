@@ -141,8 +141,12 @@ export const IconFileGeneric: React.FC<IconProps> = ({ size = 16 }) => (
 
 export const IconDzip: React.FC<IconProps> = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path d="M12 2L4 5v6.5C4 16.5 7.5 21 12 22c4.5-1 8-5.5 8-10.5V5l-8-3z" fill="#2563eb" fillOpacity="0.18" stroke="#2563eb" strokeWidth="1.6" strokeLinejoin="round"/>
-    <path d="M12 7v8M9 9h6M9 13h6" stroke="#2563eb" strokeWidth="1.6" strokeLinecap="round"/>
+    <ellipse cx="12" cy="20.5" rx="8" ry="2" fill="#0f172a" fillOpacity="0.3" />
+    <path d="M12 2.5L19.5 6.2L12 10L4.5 6.2Z" fill="#3b82f6" stroke="#93c5fd" strokeWidth="0.8" strokeLinejoin="round" />
+    <path d="M19.5 6.2L19.5 15.2L12 19L12 10Z" fill="#1d4ed8" stroke="#2563eb" strokeWidth="0.8" strokeLinejoin="round" />
+    <path d="M4.5 6.2L12 10L12 19L4.5 15.2Z" fill="#1e3a8a" stroke="#38bdf8" strokeWidth="0.8" strokeLinejoin="round" />
+    <circle cx="8.2" cy="12.6" r="2.2" fill="#0f172a" stroke="#38bdf8" strokeWidth="0.7" />
+    <path d="M8.2 11.5v2.2M7.1 12.6h2.2" stroke="#f59e0b" strokeWidth="0.7" strokeLinecap="round" />
   </svg>
 )
 

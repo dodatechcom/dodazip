@@ -108,6 +108,28 @@ export async function safeInvoke<T>(cmd: string, args?: Record<string, any>): Pr
       return mockDups as unknown as T
     }
 
+    case 'get_file_associations': {
+      const mockAssoc: Record<string, boolean> = {
+        dzip: true,
+        zip: true,
+        '7z': false,
+        rar: false,
+        tar: false,
+        iso: false,
+        cab: false,
+        deb: false,
+        dmg: false,
+        gz: false,
+        bz2: false,
+        xz: false,
+      }
+      return mockAssoc as unknown as T
+    }
+
+    case 'set_file_associations': {
+      return null as unknown as T
+    }
+
     default:
       console.warn(`[DodaZIP Web Mock] Unhandled command: ${cmd}`)
       return null as unknown as T

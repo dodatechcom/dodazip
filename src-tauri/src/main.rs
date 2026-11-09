@@ -1390,6 +1390,148 @@ async fn pick_archive_file(app: AppHandle, default_path: Option<String>) -> Resu
     Ok(file_opt.map(|f| f.to_string()))
 }
 
+const SUPPORTED_ASSOCIATIONS: &[&str] = &[
+    "dzip", "zip", "7z", "rar", "tar", "iso", "cab", "deb", "dmg", "gz", "bz2", "xz"
+];
+
+#[tauri::command]
+async fn get_file_associations() -> Result<HashMap<String, bool>, String> {
+    let mut map = HashMap::new();
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        for &ext in SUPPORTED_ASSOCIATIONS {
+            let mut associated = false;
+            let output = std::process::Command::new("reg")
+                .args(&["query", &format!("HKCU\\Software\\Classes\\.{}", ext), "/ve"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .output();
+            if let Ok(out) = output {
+                let stdout = String::from_utf8_lossy(&out.stdout);
+                if stdout.contains("DodaZip") {
+                    associated = true;
+                }
+            }
+            if !associated {
+                let ow_output = std::process::Command::new("reg")
+                    .args(&["query", &format!("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.{}\\OpenWithProgids", ext)])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .output();
+                if let Ok(out) = ow_output {
+                    let stdout = String::from_utf8_lossy(&out.stdout);
+                    if stdout.contains("DodaZip") {
+                        associated = true;
+                    }
+                }
+            }
+            if ext == "dzip" && !associated {
+                associated = true;
+            }
+            map.insert(ext.to_string(), associated);
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        for &ext in SUPPORTED_ASSOCIATIONS {
+            map.insert(ext.to_string(), ext == "dzip" || ext == "zip");
+        }
+    }
+    Ok(map)
+}
+
+#[tauri::command]
+async fn set_file_associations(associations: HashMap<String, bool>) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
+        let exe_str = exe_path.to_string_lossy().to_string();
+
+        let local_app_data = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\".into());
+        let icon_dir = std::path::PathBuf::from(local_app_data).join("DodaZip");
+        let _ = std::fs::create_dir_all(&icon_dir);
+        let dzip_icon_path = icon_dir.join("dzip_file.ico");
+        let _ = std::fs::write(&dzip_icon_path, include_bytes!("../icons/dzip_file.ico"));
+        let dzip_icon_str = dzip_icon_path.to_string_lossy().to_string();
+
+        for (ext, enabled) in associations {
+            let prog_id = if ext == "dzip" {
+                "DodaZip.Vault".to_string()
+            } else {
+                format!("DodaZip.{}", ext)
+            };
+
+            if enabled {
+                let friendly_name = if ext == "dzip" {
+                    "DodaZip Secure Vault Archive".to_string()
+                } else {
+                    format!("DodaZip Archive (.{})", ext)
+                };
+                let icon_str = if ext == "dzip" {
+                    format!("\"{}\"", dzip_icon_str)
+                } else {
+                    format!("\"{}\",0", exe_str)
+                };
+                let cmd_str = format!("\"{}\" \"%1\"", exe_str);
+
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\.{}", ext), "/ve", "/d", &prog_id, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\.{}", ext), "/v", "PerceivedType", "/d", "compressed", "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}", prog_id), "/ve", "/d", &friendly_name, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\DefaultIcon", prog_id), "/ve", "/d", &icon_str, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\open\\command", prog_id), "/ve", "/d", &cmd_str, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.{}\\OpenWithProgids", ext), "/v", &prog_id, "/t", "REG_NONE", "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+            } else {
+                let output = std::process::Command::new("reg")
+                    .args(&["query", &format!("HKCU\\Software\\Classes\\.{}", ext), "/ve"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .output();
+                if let Ok(out) = output {
+                    let stdout = String::from_utf8_lossy(&out.stdout);
+                    if stdout.contains("DodaZip") {
+                        let _ = std::process::Command::new("reg")
+                            .args(&["delete", &format!("HKCU\\Software\\Classes\\.{}", ext), "/ve", "/f"])
+                            .creation_flags(CREATE_NO_WINDOW)
+                            .status();
+                    }
+                }
+                let _ = std::process::Command::new("reg")
+                    .args(&["delete", &format!("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.{}\\OpenWithProgids", ext), "/v", &prog_id, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["delete", &format!("HKCU\\Software\\Classes\\{}", prog_id), "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+            }
+        }
+        let _ = std::process::Command::new("ie4uinit.exe")
+            .arg("-show")
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn pick_folder_dialog(app: AppHandle, default_path: Option<String>) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
@@ -1440,6 +1582,8 @@ pub fn run() {
             open_in_browser,
             pick_archive_file,
             pick_folder_dialog,
+            get_file_associations,
+            set_file_associations,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
