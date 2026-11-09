@@ -1528,7 +1528,8 @@ fn get_launch_action() -> LaunchAction {
 
 #[tauri::command]
 fn close_app(app: AppHandle) {
-    app.exit(0);
+    let _ = app.exit(0);
+    std::process::exit(0);
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

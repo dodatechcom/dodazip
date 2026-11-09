@@ -27,7 +27,7 @@ export const ExtractView: React.FC = () => {
 
   const [archivePath] = useState(selectedFile)
   const [outputDir, setOutputDir] = useState(
-    currentDir || (selectedFile ? selectedFile.replace(/\.[^/\\.]+$/, '_extracted') : '')
+    location.state?.outputDir || currentDir || (selectedFile ? selectedFile.replace(/\.[^/\\.]+$/, '_extracted') : '')
   )
   const [password, setPassword] = useState('')
   const [usePassword, setUsePassword] = useState(false)
@@ -45,9 +45,9 @@ export const ExtractView: React.FC = () => {
     return () => { unlisten.then(fn => fn()) }
   }, [])
 
-  // Auto-inspect archive on load
+  // Auto-inspect archive on load (skip if auto-extracting from context menu)
   useEffect(() => {
-    if (archivePath) {
+    if (archivePath && !location.state?.autoStart) {
       handleList()
     }
   }, [archivePath])
@@ -207,7 +207,7 @@ export const ExtractView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  const base = archivePath ? archivePath.replace(/\/[^/]+$/, '') : ''
+                  const base = archivePath ? archivePath.replace(/[/\\][^/\\]+$/, '') : ''
                   if (base) setOutputDir(base)
                 }}
                 style={{
@@ -221,7 +221,7 @@ export const ExtractView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  const base = archivePath ? archivePath.replace(/\.[^/.]+$/, '_extracted') : ''
+                  const base = archivePath ? archivePath.replace(/\.[^/\\.]+$/, '_extracted') : ''
                   if (base) setOutputDir(base)
                 }}
                 style={{
