@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { IconSettings, IconGlobe, IconCheck, IconLoader, IconX, IconDzip } from './Icons'
+import {
+  IconSettings,
+  IconGlobe,
+  IconCheck,
+  IconLoader,
+  IconX,
+  IconDzip,
+  IconRefresh,
+  IconHelp,
+  IconSun,
+  IconMoon,
+} from './Icons'
 import { useI18n, LANGUAGES, Language } from '../utils/i18n'
 import { preferences, resolveTheme } from '../utils/preferences'
 import { checkForUpdates, UpdateInfo, CURRENT_VERSION, detectOS } from '../utils/updateChecker'
@@ -10,6 +21,8 @@ interface SettingsModalProps {
   onClose: () => void
   onThemeChange?: (theme: 'light' | 'dark') => void
 }
+
+type SettingsTab = 'associations' | 'language' | 'updates' | 'appearance'
 
 const FORMAT_SPECS: { ext: string; label: string; desc: string }[] = [
   { ext: 'dzip', label: '.dzip', desc: 'DodaZip Secure Vault' },
@@ -29,6 +42,7 @@ const FORMAT_SPECS: { ext: string; label: string; desc: string }[] = [
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onThemeChange }) => {
   const { lang, setLanguage, t } = useI18n()
 
+  const [activeTab, setActiveTab] = useState<SettingsTab>('associations')
   const [autoCheck, setAutoCheck] = useState<boolean>(preferences.autoCheckUpdates)
   const [activeTheme, setActiveTheme] = useState(preferences.theme)
 
@@ -98,6 +112,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
         l.code.toLowerCase().includes(q)
     )
   }, [langSearch])
+
+  const associatedCount = useMemo(() => {
+    return Object.values(associations).filter(Boolean).length
+  }, [associations])
 
   if (!isOpen) return null
 
@@ -187,8 +205,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
       <div
         style={{
           width: '100%',
-          maxWidth: 640,
-          maxHeight: '92vh',
+          maxWidth: 820,
+          height: 560,
+          maxHeight: '90vh',
           background: 'var(--bg-surface)',
           border: '1px solid var(--border)',
           borderRadius: 12,
@@ -203,7 +222,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
         {/* Header */}
         <div
           style={{
-            padding: '16px 22px',
+            padding: '14px 20px',
             background: 'var(--bg-stripe)',
             borderBottom: '1px solid var(--border-light)',
             display: 'flex',
@@ -214,10 +233,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <IconSettings size={20} />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--text-primary)' }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>
                 {t('settings.title', 'Settings')}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+              <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                 {t('settings.subtitle', 'Preferences, Updates & Associations')}
               </div>
             </div>
@@ -239,522 +258,876 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
           </button>
         </div>
 
-        {/* Content Body */}
-        <div
-          style={{
-            padding: '20px 22px',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 22,
-          }}
-        >
-          {/* Section 1: Interface Language (88 Languages) */}
+        {/* Master-Detail Body: Left Sidebar + Right Content */}
+        <div style={{ display: 'flex', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          {/* Left Sidebar Navigation */}
           <div
             style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-light)',
-              borderRadius: 10,
-              padding: 16,
+              width: 220,
+              background: 'var(--bg-stripe)',
+              borderRight: '1px solid var(--border-light)',
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '14px 10px',
+              gap: 4,
+              userSelect: 'none',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <IconGlobe size={18} />
-                <span style={{ fontWeight: 600, fontSize: 14 }}>
-                  {t('settings.language', 'Interface Language (88 Languages)')}
-                </span>
-              </div>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  padding: '2px 8px',
-                  borderRadius: 10,
-                  background: 'rgba(59, 130, 246, 0.1)',
-                  color: 'var(--accent, #3b82f6)',
-                }}
-              >
-                {LANGUAGES.find((l) => l.code === lang)?.flag} {LANGUAGES.find((l) => l.code === lang)?.nativeName}
-              </span>
-            </div>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px 0' }}>
-              {t('settings.languageDesc', 'Select your preferred language for the DodaZip interface')}
-            </p>
-
-            {/* Search Input for Languages */}
-            <div style={{ marginBottom: 10 }}>
-              <input
-                type="text"
-                value={langSearch}
-                onChange={(e) => setLangSearch(e.target.value)}
-                placeholder={t('settings.languageSearch', 'Search language by name or native name...')}
-                style={{
-                  width: '100%',
-                  padding: '6px 12px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border-light)',
-                  background: 'var(--bg-surface)',
-                  color: 'var(--text-primary)',
-                  fontSize: 12,
-                  outline: 'none',
-                }}
-              />
-            </div>
-
-            {/* Scrollable Language Grid */}
-            <div
+            {/* Tab 1: File Associations */}
+            <button
+              onClick={() => setActiveTab('associations')}
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))',
-                gap: 6,
-                maxHeight: 180,
-                overflowY: 'auto',
-                paddingRight: 4,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: 'none',
+                background: activeTab === 'associations' ? 'var(--accent, #3b82f6)' : 'transparent',
+                color: activeTab === 'associations' ? '#ffffff' : 'var(--text-primary)',
+                fontWeight: activeTab === 'associations' ? 600 : 500,
+                fontSize: 13,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.12s ease',
               }}
             >
-              {filteredLanguages.map((l) => {
-                const isSelected = lang === l.code
-                return (
-                  <button
-                    key={l.code}
-                    onClick={() => handleLanguageSelect(l.code)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      padding: '6px 10px',
-                      borderRadius: 6,
-                      border: isSelected
-                        ? '1.5px solid var(--accent, #3b82f6)'
-                        : '1px solid var(--border-light)',
-                      background: isSelected
-                        ? 'rgba(59, 130, 246, 0.15)'
-                        : 'var(--bg-surface)',
-                      cursor: 'pointer',
-                      color: 'var(--text-primary)',
-                      textAlign: 'left',
-                      transition: 'all 0.1s ease',
-                      outline: 'none',
-                    }}
-                  >
-                    <span style={{ fontSize: 16 }}>{l.flag}</span>
-                    <div style={{ overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
-                      <div style={{ fontSize: 12, fontWeight: isSelected ? 700 : 500, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {l.nativeName}
-                      </div>
-                      <div style={{ fontSize: 10, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {l.name}
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Section 2: File Associations (Default Handler) */}
-          <div
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-light)',
-              borderRadius: 10,
-              padding: 16,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <IconDzip size={18} />
-                <span style={{ fontWeight: 600, fontSize: 14 }}>
-                  {t('settings.associations', 'File Associations (Default Handler)')}
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <IconDzip size={17} />
+                <span>{t('settings.associationsTab', 'File Associations')}</span>
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  onClick={() => handleSelectAllAssociations(true)}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-light)',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {t('settings.selectAll', 'Select All')}
-                </button>
-                <button
-                  onClick={() => handleSelectAllAssociations(false)}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: 4,
-                    fontSize: 11,
-                    background: 'var(--bg-surface)',
-                    border: '1px solid var(--border-light)',
-                    color: 'var(--text-secondary)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {t('settings.clearAll', 'Clear All')}
-                </button>
-              </div>
-            </div>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 12px 0' }}>
-              {t('settings.associationsDesc', 'Choose which archive and image formats automatically open in DodaZip')}
-            </p>
-
-            {loadingAssoc ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 12, fontSize: 12, color: 'var(--text-secondary)' }}>
-                <IconLoader size={14} /> Loading system associations...
-              </div>
-            ) : (
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
-                  gap: 8,
-                }}
-              >
-                {FORMAT_SPECS.map((item) => {
-                  const isChecked = !!associations[item.ext]
-                  return (
-                    <label
-                      key={item.ext}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        padding: '6px 10px',
-                        borderRadius: 6,
-                        border: isChecked
-                          ? '1px solid rgba(59, 130, 246, 0.4)'
-                          : '1px solid var(--border-light)',
-                        background: isChecked
-                          ? 'rgba(59, 130, 246, 0.08)'
-                          : 'var(--bg-surface)',
-                        cursor: 'pointer',
-                        userSelect: 'none',
-                        transition: 'all 0.1s ease',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => handleToggleAssociation(item.ext)}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <div style={{ overflow: 'hidden' }}>
-                        <div style={{ fontWeight: 600, fontSize: 12, color: isChecked ? 'var(--accent, #3b82f6)' : 'var(--text-primary)' }}>
-                          {item.label}
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {item.desc}
-                        </div>
-                      </div>
-                    </label>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Apply Associations Action Button & Status */}
-            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                onClick={handleApplyAssociations}
-                disabled={savingAssoc}
-                className="action-btn"
-                style={{
-                  padding: '7px 16px',
-                  borderRadius: 6,
-                  background: 'var(--accent, #3b82f6)',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontWeight: 600,
-                  fontSize: 12,
-                  cursor: savingAssoc ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                {savingAssoc && <IconLoader size={14} />}
-                {t('settings.applyAssociations', 'Apply File Associations')}
-              </button>
-
-              {assocSuccessMsg && (
-                <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <IconCheck size={14} /> {assocSuccessMsg}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Section 3: Software Updates */}
-          <div
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-light)',
-              borderRadius: 10,
-              padding: 16,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontWeight: 600, fontSize: 14 }}>
-                {t('settings.updates', 'Software Updates')}
-              </span>
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: 10,
+                  padding: '2px 6px',
+                  borderRadius: 10,
+                  background: activeTab === 'associations' ? 'rgba(255, 255, 255, 0.25)' : 'var(--bg-card)',
+                  color: activeTab === 'associations' ? '#ffffff' : 'var(--text-secondary)',
                   fontWeight: 600,
-                  padding: '2px 8px',
-                  borderRadius: 12,
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border-light)',
-                  color: 'var(--text-secondary)',
+                }}
+              >
+                {associatedCount}/12
+              </span>
+            </button>
+
+            {/* Tab 2: Language & Region */}
+            <button
+              onClick={() => setActiveTab('language')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: 'none',
+                background: activeTab === 'language' ? 'var(--accent, #3b82f6)' : 'transparent',
+                color: activeTab === 'language' ? '#ffffff' : 'var(--text-primary)',
+                fontWeight: activeTab === 'language' ? 600 : 500,
+                fontSize: 13,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.12s ease',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <IconGlobe size={17} />
+                <span>{t('settings.languageTab', 'Language')}</span>
+              </div>
+              <span
+                style={{
+                  fontSize: 10,
+                  padding: '2px 6px',
+                  borderRadius: 10,
+                  background: activeTab === 'language' ? 'rgba(255, 255, 255, 0.25)' : 'var(--bg-card)',
+                  color: activeTab === 'language' ? '#ffffff' : 'var(--text-secondary)',
+                  fontWeight: 600,
+                }}
+              >
+                88
+              </span>
+            </button>
+
+            {/* Tab 3: Software Updates */}
+            <button
+              onClick={() => setActiveTab('updates')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: 'none',
+                background: activeTab === 'updates' ? 'var(--accent, #3b82f6)' : 'transparent',
+                color: activeTab === 'updates' ? '#ffffff' : 'var(--text-primary)',
+                fontWeight: activeTab === 'updates' ? 600 : 500,
+                fontSize: 13,
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.12s ease',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <IconRefresh size={17} />
+                <span>{t('settings.updatesTab', 'Software Updates')}</span>
+              </div>
+              <span
+                style={{
+                  fontSize: 10,
+                  padding: '2px 6px',
+                  borderRadius: 10,
+                  background: activeTab === 'updates' ? 'rgba(255, 255, 255, 0.25)' : 'var(--bg-card)',
+                  color: activeTab === 'updates' ? '#ffffff' : 'var(--text-secondary)',
+                  fontWeight: 600,
                 }}
               >
                 v{CURRENT_VERSION}
               </span>
-            </div>
+            </button>
 
-            {/* Checkbox auto check on start */}
-            <label
+            {/* Tab 4: Appearance & Help */}
+            <button
+              onClick={() => setActiveTab('appearance')}
               style={{
                 display: 'flex',
-                alignItems: 'flex-start',
-                gap: 10,
-                marginTop: 10,
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 12px',
+                borderRadius: 8,
+                border: 'none',
+                background: activeTab === 'appearance' ? 'var(--accent, #3b82f6)' : 'transparent',
+                color: activeTab === 'appearance' ? '#ffffff' : 'var(--text-primary)',
+                fontWeight: activeTab === 'appearance' ? 600 : 500,
+                fontSize: 13,
                 cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'all 0.12s ease',
               }}
             >
-              <input
-                type="checkbox"
-                checked={autoCheck}
-                onChange={handleToggleAutoCheck}
-                style={{ marginTop: 2, cursor: 'pointer' }}
-              />
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                  {t('settings.autoCheckUpdates', 'Automatically check for updates on startup')}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                  {t('settings.autoCheckDesc', 'DodaZip will notify you when a new release or security fix is available')}
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <IconSun size={17} />
+                <span>{t('settings.appearanceTab', 'Appearance & Help')}</span>
               </div>
-            </label>
+            </button>
+          </div>
 
-            {/* Official Update Channel Notice */}
-            <div
-              style={{
-                marginTop: 12,
-                padding: '8px 12px',
-                background: 'var(--bg-surface)',
-                borderRadius: 6,
-                border: '1px solid var(--border-light)',
-                fontSize: 11,
-                color: 'var(--text-secondary)',
-                lineHeight: 1.5,
-              }}
-            >
-              <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Official CDN Channel: </span>
-              Cloudflare R2 (<code>https://updates.dodatech.com/dodazip/latest.json</code>) with secure fallback.
-            </div>
-
-            {/* Action button & status */}
-            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <button
-                onClick={handleCheckUpdatesNow}
-                disabled={checking}
-                className="action-btn"
-                style={{
-                  padding: '7px 16px',
-                  borderRadius: 6,
-                  background: 'var(--accent, #3b82f6)',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontWeight: 600,
-                  fontSize: 12,
-                  cursor: checking ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                {checking && <IconLoader size={14} />}
-                {checking ? t('settings.checking', 'Checking for updates...') : t('settings.checkNow', 'Check for Updates Now')}
-              </button>
-            </div>
-
-            {/* Update check results */}
-            {updateResult && (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: 12,
-                  borderRadius: 8,
-                  fontSize: 12,
-                  background: updateResult.hasUpdate
-                    ? 'rgba(34, 197, 94, 0.1)'
-                    : updateResult.error
-                    ? 'rgba(239, 68, 68, 0.1)'
-                    : 'var(--bg-surface)',
-                  border: updateResult.hasUpdate
-                    ? '1px solid rgba(34, 197, 94, 0.3)'
-                    : updateResult.error
-                    ? '1px solid rgba(239, 68, 68, 0.3)'
-                    : '1px solid var(--border-light)',
-                }}
-              >
-                {updateResult.hasUpdate ? (
+          {/* Right Content Area */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '22px 26px',
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 0,
+            }}
+          >
+            {/* ========================================================================= */}
+            {/* VIEW 1: FILE ASSOCIATIONS                                                 */}
+            {/* ========================================================================= */}
+            {activeTab === 'associations' && (
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                   <div>
-                    <div style={{ fontWeight: 600, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <IconCheck size={16} />
-                      {t('settings.updateAvailable', 'New version available!')} v{updateResult.latestVersion}
-                    </div>
-                    {updateResult.releaseNotes && (
-                      <div
-                        style={{
-                          marginTop: 6,
-                          color: 'var(--text-secondary)',
-                          whiteSpace: 'pre-wrap',
-                          maxHeight: 90,
-                          overflowY: 'auto',
-                          background: 'var(--bg-surface)',
-                          padding: 8,
-                          borderRadius: 6,
-                          fontSize: 11,
-                        }}
-                      >
-                        {updateResult.releaseNotes}
-                      </div>
-                    )}
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {t('settings.associations', 'File Associations (Default Handler)')}
+                    </h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {t('settings.associationsDesc', 'Choose which archive and image formats automatically open in DodaZip')}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
                     <button
-                      onClick={() => safeOpenUrl(updateResult.downloadUrl)}
+                      onClick={() => handleSelectAllAssociations(true)}
                       style={{
-                        marginTop: 10,
-                        padding: '6px 14px',
+                        padding: '4px 10px',
                         borderRadius: 6,
-                        background: '#16a34a',
-                        color: '#fff',
-                        border: 'none',
-                        fontWeight: 600,
-                        fontSize: 12,
+                        fontSize: 11,
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-light)',
+                        color: 'var(--text-primary)',
                         cursor: 'pointer',
+                        fontWeight: 500,
                       }}
                     >
-                      {t('settings.downloadUpdate', 'Download Update')}
+                      {t('settings.selectAll', 'Select All')}
+                    </button>
+                    <button
+                      onClick={() => handleSelectAllAssociations(false)}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-light)',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {t('settings.clearAll', 'Clear All')}
                     </button>
                   </div>
-                ) : updateResult.error ? (
-                  <div style={{ color: '#dc2626' }}>
-                    ⚠️ {updateResult.error}
+                </div>
+
+                {loadingAssoc ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 30, fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <IconLoader size={16} /> Loading Windows Registry associations...
                   </div>
                 ) : (
-                  <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <IconCheck size={14} />
-                    {t('settings.upToDate', `You are using the latest version of DodaZip (v${CURRENT_VERSION}).`)}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))',
+                      gap: 8,
+                      marginTop: 14,
+                    }}
+                  >
+                    {FORMAT_SPECS.map((item) => {
+                      const isChecked = !!associations[item.ext]
+                      return (
+                        <label
+                          key={item.ext}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            border: isChecked
+                              ? '1.5px solid var(--accent, #3b82f6)'
+                              : '1px solid var(--border-light)',
+                            background: isChecked
+                              ? 'rgba(59, 130, 246, 0.08)'
+                              : 'var(--bg-card)',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            transition: 'all 0.12s ease',
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleAssociation(item.ext)}
+                            style={{ cursor: 'pointer', width: 15, height: 15 }}
+                          />
+                          <div style={{ overflow: 'hidden' }}>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: isChecked ? 'var(--accent, #3b82f6)' : 'var(--text-primary)' }}>
+                              {item.label}
+                            </div>
+                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {item.desc}
+                            </div>
+                          </div>
+                        </label>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Apply button and status */}
+                <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <button
+                    onClick={handleApplyAssociations}
+                    disabled={savingAssoc}
+                    className="action-btn"
+                    style={{
+                      padding: '8px 20px',
+                      borderRadius: 6,
+                      background: 'var(--accent, #3b82f6)',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: savingAssoc ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    {savingAssoc && <IconLoader size={14} />}
+                    {t('settings.applyAssociations', 'Apply File Associations')}
+                  </button>
+
+                  {assocSuccessMsg && (
+                    <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <IconCheck size={16} /> {assocSuccessMsg}
+                    </span>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 18,
+                    padding: '10px 14px',
+                    background: 'var(--bg-card)',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-light)',
+                    fontSize: 11,
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>ℹ️ How it works: </span>
+                  Checked formats are registered in the Windows Registry to automatically open in DodaZip when double-clicked. Unchecking a format relinquishes it so other software (or Windows default) handles it.
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* VIEW 2: LANGUAGE & REGION (88 LANGUAGES)                                 */}
+            {/* ========================================================================= */}
+            {activeTab === 'language' && (
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {t('settings.language', 'Interface Language')}
+                    </h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                      {t('settings.languageDesc', 'Select your preferred language (88 languages supported)')}
+                    </p>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      padding: '4px 10px',
+                      borderRadius: 12,
+                      background: 'rgba(59, 130, 246, 0.12)',
+                      color: 'var(--accent, #3b82f6)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <span>{LANGUAGES.find((l) => l.code === lang)?.flag}</span>
+                    <span>{LANGUAGES.find((l) => l.code === lang)?.nativeName}</span>
+                    <span style={{ opacity: 0.7, fontSize: 10 }}>({lang})</span>
+                  </div>
+                </div>
+
+                {/* Search Bar */}
+                <div style={{ marginBottom: 10, position: 'relative' }}>
+                  <input
+                    type="text"
+                    value={langSearch}
+                    onChange={(e) => setLangSearch(e.target.value)}
+                    placeholder={t('settings.languageSearch', 'Search 88 languages by name or native script...')}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      paddingRight: langSearch ? 32 : 12,
+                      borderRadius: 8,
+                      border: '1px solid var(--border-light)',
+                      background: 'var(--bg-card)',
+                      color: 'var(--text-primary)',
+                      fontSize: 13,
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                  {langSearch && (
+                    <button
+                      onClick={() => setLangSearch('')}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        padding: 2,
+                      }}
+                    >
+                      <IconX size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* Clean Scrollable List Box for 88 Languages */}
+                <div
+                  style={{
+                    flex: 1,
+                    minHeight: 280,
+                    overflowY: 'auto',
+                    border: '1px solid var(--border-light)',
+                    borderRadius: 8,
+                    background: 'var(--bg-card)',
+                    padding: 4,
+                  }}
+                >
+                  {filteredLanguages.length === 0 ? (
+                    <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-secondary)', fontSize: 13 }}>
+                      No languages found matching "{langSearch}"
+                    </div>
+                  ) : (
+                    filteredLanguages.map((l) => {
+                      const isSelected = lang === l.code
+                      return (
+                        <div
+                          key={l.code}
+                          onClick={() => handleLanguageSelect(l.code)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            background: isSelected ? 'rgba(59, 130, 246, 0.12)' : 'transparent',
+                            cursor: 'pointer',
+                            userSelect: 'none',
+                            transition: 'background 0.1s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) e.currentTarget.style.background = 'var(--bg-hover)'
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) e.currentTarget.style.background = 'transparent'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ fontSize: 20 }}>{l.flag}</span>
+                            <div>
+                              <span style={{ fontSize: 13, fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--accent, #3b82f6)' : 'var(--text-primary)' }}>
+                                {l.nativeName}
+                              </span>
+                              <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 8 }}>
+                                {l.name}
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                              {l.code}
+                            </span>
+                            {isSelected && <IconCheck size={16} />}
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ========================================================================= */}
+            {/* VIEW 3: SOFTWARE UPDATES                                                  */}
+            {/* ========================================================================= */}
+            {activeTab === 'updates' && (
+              <div>
+                <div style={{ marginBottom: 14 }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {t('settings.updates', 'Software Updates')}
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {t('settings.autoCheckDesc', 'DodaZip release channels, CDN distribution, and version verification')}
+                  </p>
+                </div>
+
+                {/* Current Version Card */}
+                <div
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-light)',
+                    borderRadius: 10,
+                    padding: 16,
+                    marginBottom: 14,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>
+                        DodaZip v{CURRENT_VERSION}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        Architecture: Windows x64 (Tauri 2 + High-Performance Rust Engine)
+                      </div>
+                    </div>
+                    <span
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: 12,
+                        background: 'rgba(34, 197, 94, 0.12)',
+                        color: '#16a34a',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <IconCheck size={14} /> Production Release
+                    </span>
+                  </div>
+
+                  {/* Startup auto check toggle */}
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      marginTop: 14,
+                      paddingTop: 12,
+                      borderTop: '1px solid var(--border-light)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={autoCheck}
+                      onChange={handleToggleAutoCheck}
+                      style={{ marginTop: 2, cursor: 'pointer' }}
+                    />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                        {t('settings.autoCheckUpdates', 'Automatically check for updates on startup')}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        Notifies you when an update or security enhancement is published
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                {/* CDN Channel Notice */}
+                <div
+                  style={{
+                    padding: '10px 14px',
+                    background: 'var(--bg-card)',
+                    borderRadius: 8,
+                    border: '1px solid var(--border-light)',
+                    fontSize: 11,
+                    color: 'var(--text-secondary)',
+                    lineHeight: 1.5,
+                    marginBottom: 16,
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Official CDN Channel: </span>
+                  Cloudflare R2 (<code>https://updates.dodatech.com/dodazip/latest.json</code>) with secondary GitHub API fallback.
+                </div>
+
+                {/* Check button */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <button
+                    onClick={handleCheckUpdatesNow}
+                    disabled={checking}
+                    className="action-btn"
+                    style={{
+                      padding: '8px 18px',
+                      borderRadius: 6,
+                      background: 'var(--accent, #3b82f6)',
+                      color: '#ffffff',
+                      border: 'none',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: checking ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    {checking ? <IconLoader size={14} /> : <IconRefresh size={14} />}
+                    {checking ? t('settings.checking', 'Checking for updates...') : t('settings.checkNow', 'Check for Updates Now')}
+                  </button>
+                </div>
+
+                {/* Update Results */}
+                {updateResult && (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: 14,
+                      borderRadius: 8,
+                      fontSize: 12,
+                      background: updateResult.hasUpdate
+                        ? 'rgba(34, 197, 94, 0.1)'
+                        : updateResult.error
+                        ? 'rgba(239, 68, 68, 0.1)'
+                        : 'var(--bg-card)',
+                      border: updateResult.hasUpdate
+                        ? '1px solid rgba(34, 197, 94, 0.3)'
+                        : updateResult.error
+                        ? '1px solid rgba(239, 68, 68, 0.3)'
+                        : '1px solid var(--border-light)',
+                    }}
+                  >
+                    {updateResult.hasUpdate ? (
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                          <IconCheck size={16} />
+                          {t('settings.updateAvailable', 'New version available!')} v{updateResult.latestVersion}
+                        </div>
+                        {updateResult.releaseNotes && (
+                          <div
+                            style={{
+                              marginTop: 8,
+                              color: 'var(--text-secondary)',
+                              whiteSpace: 'pre-wrap',
+                              maxHeight: 100,
+                              overflowY: 'auto',
+                              background: 'var(--bg-surface)',
+                              padding: 8,
+                              borderRadius: 6,
+                              fontSize: 11,
+                            }}
+                          >
+                            {updateResult.releaseNotes}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => safeOpenUrl(updateResult.downloadUrl)}
+                          style={{
+                            marginTop: 12,
+                            padding: '7px 16px',
+                            borderRadius: 6,
+                            background: '#16a34a',
+                            color: '#fff',
+                            border: 'none',
+                            fontWeight: 600,
+                            fontSize: 12,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {t('settings.downloadUpdate', 'Download Update')}
+                        </button>
+                      </div>
+                    ) : updateResult.error ? (
+                      <div style={{ color: '#dc2626' }}>
+                        ⚠️ {updateResult.error}
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                          <IconCheck size={15} />
+                          {t('settings.upToDate', `You are using the latest version of DodaZip (v${CURRENT_VERSION}).`)}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                          Your installation matches the latest release on <code>updates.dodatech.com</code>. You can re-download the packages directly at any time:
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            onClick={() => safeOpenUrl('https://updates.dodatech.com/dodazip/releases/windows/DodaZip-Setup-v0.1.0.exe')}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              background: 'var(--bg-surface)',
+                              border: '1px solid var(--border-light)',
+                              color: 'var(--text-primary)',
+                              fontSize: 11,
+                              cursor: 'pointer',
+                              fontWeight: 500,
+                            }}
+                          >
+                            Download Setup (v0.1.0) ↗
+                          </button>
+                          <button
+                            onClick={() => safeOpenUrl('https://updates.dodatech.com/dodazip/releases/windows/DodaZip-v0.1.0-windows-x64-portable.zip')}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              background: 'var(--bg-surface)',
+                              border: '1px solid var(--border-light)',
+                              color: 'var(--text-primary)',
+                              fontSize: 11,
+                              cursor: 'pointer',
+                              fontWeight: 500,
+                            }}
+                          >
+                            Download Portable ZIP ↗
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
             )}
-          </div>
 
-          {/* Section 4: General Appearance & Help */}
-          <div
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border-light)',
-              borderRadius: 10,
-              padding: 16,
-            }}
-          >
-            <span style={{ fontWeight: 600, fontSize: 14, display: 'block', marginBottom: 10 }}>
-              {t('settings.general', 'General & Appearance')}
-            </span>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                {t('settings.theme', 'Color Theme')}
-              </span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {(['auto', 'light', 'dark'] as const).map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => handleThemeChange(mode)}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: 6,
-                      fontSize: 12,
-                      fontWeight: activeTheme === mode ? 600 : 400,
-                      border: activeTheme === mode
-                        ? '1px solid var(--accent, #3b82f6)'
-                        : '1px solid var(--border-light)',
-                      background: activeTheme === mode
-                        ? 'rgba(59, 130, 246, 0.12)'
-                        : 'var(--bg-surface)',
-                      color: 'var(--text-primary)',
-                      cursor: 'pointer',
-                      textTransform: 'capitalize',
-                    }}
-                  >
-                    {mode === 'auto' ? t('settings.themeAuto', 'Auto') : mode === 'light' ? t('settings.themeLight', 'Light') : t('settings.themeDark', 'Dark')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div
-              style={{
-                marginTop: 14,
-                paddingTop: 12,
-                borderTop: '1px solid var(--border-light)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
+            {/* ========================================================================= */}
+            {/* VIEW 4: APPEARANCE & HELP                                                 */}
+            {/* ========================================================================= */}
+            {activeTab === 'appearance' && (
               <div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>
-                  {t('help.docs', 'Documentation')}
+                <div style={{ marginBottom: 14 }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {t('settings.appearanceTab', 'Appearance & Documentation')}
+                  </h3>
+                  <p style={{ margin: '4px 0 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Customize visual themes, shortcuts, and view official product resources
+                  </p>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                  Press <kbd style={{ padding: '1px 5px', background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 4 }}>F1</kbd> anywhere to open online help
+
+                {/* Theme Selector Card */}
+                <div
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-light)',
+                    borderRadius: 10,
+                    padding: 16,
+                    marginBottom: 14,
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
+                    {t('settings.theme', 'Color Theme')}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {(['auto', 'light', 'dark'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => handleThemeChange(mode)}
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: activeTheme === mode ? 600 : 400,
+                          border: activeTheme === mode
+                            ? '1.5px solid var(--accent, #3b82f6)'
+                            : '1px solid var(--border-light)',
+                          background: activeTheme === mode
+                            ? 'rgba(59, 130, 246, 0.12)'
+                            : 'var(--bg-surface)',
+                          color: 'var(--text-primary)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        {mode === 'light' && <IconSun size={15} />}
+                        {mode === 'dark' && <IconMoon size={15} />}
+                        {mode === 'auto' ? t('settings.themeAuto', 'System (Auto)') : mode === 'light' ? t('settings.themeLight', 'Light') : t('settings.themeDark', 'Dark')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Keyboard Shortcuts Card */}
+                <div
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-light)',
+                    borderRadius: 10,
+                    padding: 16,
+                    marginBottom: 14,
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <IconHelp size={16} /> Keyboard Shortcuts
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: 'var(--bg-surface)', borderRadius: 4 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Online Help</span>
+                      <kbd style={{ fontFamily: 'monospace', fontWeight: 600 }}>F1</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: 'var(--bg-surface)', borderRadius: 4 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Refresh View</span>
+                      <kbd style={{ fontFamily: 'monospace', fontWeight: 600 }}>F5</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: 'var(--bg-surface)', borderRadius: 4 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>New Vault</span>
+                      <kbd style={{ fontFamily: 'monospace', fontWeight: 600 }}>Ctrl + N</kbd>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: 'var(--bg-surface)', borderRadius: 4 }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Open Archive</span>
+                      <kbd style={{ fontFamily: 'monospace', fontWeight: 600 }}>Ctrl + O</kbd>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Official Links Card */}
+                <div
+                  style={{
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border-light)',
+                    borderRadius: 10,
+                    padding: 16,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600 }}>Official DodaTech Resources</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                      Visit our homepage or read the user manual online
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => safeOpenUrl('https://dodatech.com')}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-light)',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                      }}
+                    >
+                      DodaTech.com ↗
+                    </button>
+                    <button
+                      onClick={() => safeOpenUrl('https://dodatech.com/docs/dodazip/')}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        background: 'var(--accent, #3b82f6)',
+                        border: 'none',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                      }}
+                    >
+                      Documentation ↗
+                    </button>
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={() => safeOpenUrl('https://dodatech.com/docs/dodazip/')}
-                style={{
-                  padding: '5px 12px',
-                  borderRadius: 6,
-                  fontSize: 12,
-                  background: 'var(--bg-surface)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                }}
-              >
-                Open Docs ↗
-              </button>
-            </div>
+            )}
           </div>
         </div>
 
         {/* Footer */}
         <div
           style={{
-            padding: '12px 22px',
+            padding: '12px 20px',
             background: 'var(--bg-stripe)',
             borderTop: '1px solid var(--border-light)',
             display: 'flex',
-            justifyContent: 'flex-end',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}
         >
           <button
+            onClick={() => safeOpenUrl('https://dodatech.com')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              fontSize: 11,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              fontWeight: 500,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent, #3b82f6)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+          >
+            <span>🌐 DodaTech.com</span>
+          </button>
+
+          <button
             onClick={onClose}
             style={{
-              padding: '7px 20px',
+              padding: '6px 22px',
               borderRadius: 6,
               background: 'var(--accent, #3b82f6)',
               color: '#fff',

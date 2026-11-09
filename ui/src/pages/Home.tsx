@@ -1785,6 +1785,29 @@ export const Home: React.FC = () => {
               <span style={{ color: 'var(--border-light)' }}>·</span>
               <button
                 type="button"
+                onClick={() => safeOpenUrl('https://dodatech.com')}
+                title="Visit Official Website: DodaTech.com"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  textDecoration: 'none',
+                  fontWeight: 500,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)' }}
+              >
+                <span>DodaTech.com</span>
+              </button>
+              <span style={{ color: 'var(--border-light)' }}>·</span>
+              <button
+                type="button"
                 onClick={() => setShowAbout(true)}
                 style={{
                   background: 'transparent',
