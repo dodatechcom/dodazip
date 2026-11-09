@@ -1,7 +1,20 @@
 {
   "version": "0.1.0",
-  "downloadUrl": "https://updates.dodatech.com/dodazip/releases/DodaZip-Setup-v0.1.0.exe",
-  "portableUrl": "https://updates.dodatech.com/dodazip/releases/DodaZip-v0.1.0-windows-x64-portable.zip",
   "releaseDate": "2026-11-08",
-  "notes": "DodaZip v0.1.0\n- High-Trust Vault Engine (.dzip)\n- AES-256 military encryption & BLAKE3 integrity verification\n- Multi-language interface (10 languages)\n- Windows Explorer context menu & SendTo integration"
+  "downloadUrl": "https://updates.dodatech.com/dodazip/releases/windows/DodaZip-Setup-v0.1.0.exe",
+  "platforms": {
+    "windows": {
+      "installer": "https://updates.dodatech.com/dodazip/releases/windows/DodaZip-Setup-v0.1.0.exe",
+      "portable": "https://updates.dodatech.com/dodazip/releases/windows/DodaZip-v0.1.0-windows-x64-portable.zip"
+    },
+    "linux": {
+      "appImage": "https://updates.dodatech.com/dodazip/releases/linux/dodazip-0.1.0-x86_64.AppImage",
+      "deb": "https://updates.dodatech.com/dodazip/releases/linux/dodazip_0.1.0_amd64.deb",
+      "tar": "https://updates.dodatech.com/dodazip/releases/linux/dodazip-0.1.0-linux-x64.tar.gz"
+    },
+    "macos": {
+      "dmg": "https://updates.dodatech.com/dodazip/releases/macos/DodaZip-v0.1.0.dmg"
+    }
+  },
+  "notes": "DodaZip v0.1.0\n- High-Trust Vault Engine (.dzip)\n- AES-256 military encryption & BLAKE3 integrity verification\n- Multi-language interface (10 languages)\n- Cross-platform support for Windows, Linux & macOS"
 }

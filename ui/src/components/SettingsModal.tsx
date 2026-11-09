@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { IconSettings, IconGlobe, IconCheck, IconLoader, IconX } from './Icons'
 import { useI18n, LANGUAGES, Language } from '../utils/i18n'
 import { preferences, resolveTheme } from '../utils/preferences'
-import { checkForUpdates, UpdateInfo, CURRENT_VERSION } from '../utils/updateChecker'
+import { checkForUpdates, UpdateInfo, CURRENT_VERSION, detectOS } from '../utils/updateChecker'
 import { safeOpenUrl } from '../utils/tauriBridge'
 
 interface SettingsModalProps {
@@ -63,6 +63,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
         currentVersion: CURRENT_VERSION,
         latestVersion: CURRENT_VERSION,
         downloadUrl: '',
+        platform: detectOS(),
         error: err?.message || 'Failed to check for updates',
       })
     } finally {
