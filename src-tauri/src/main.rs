@@ -1436,8 +1436,17 @@ pub struct LaunchAction {
     pub output_dir: Option<String>,
 }
 
+static LAUNCH_ACTION_CONSUMED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 #[tauri::command]
 fn get_launch_action() -> LaunchAction {
+    if LAUNCH_ACTION_CONSUMED.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return LaunchAction {
+            mode: "normal".to_string(),
+            files: Vec::new(),
+            output_dir: None,
+        };
+    }
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mut files = Vec::new();
     let mut is_extract_here = false;
@@ -1515,6 +1524,11 @@ fn get_launch_action() -> LaunchAction {
         files: Vec::new(),
         output_dir: None,
     }
+}
+
+#[tauri::command]
+fn close_app(app: AppHandle) {
+    app.exit(0);
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2125,6 +2139,7 @@ pub fn run() {
             get_launch_file,
             get_launch_files,
             get_launch_action,
+            close_app,
             run_benchmark,
             rename_file,
             convert_archive,

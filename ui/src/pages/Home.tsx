@@ -264,6 +264,7 @@ export const Home: React.FC = () => {
         if (!action || !action.files || action.files.length === 0) return
         if (action.mode === 'extract_here' || action.mode === 'extract_to') {
           navigate('/extract', {
+            replace: true,
             state: {
               archivePath: action.files[0],
               outputDir: action.output_dir,

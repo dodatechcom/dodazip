@@ -52,6 +52,14 @@ export const ExtractView: React.FC = () => {
     }
   }, [archivePath])
 
+  const handleDismiss = () => {
+    if (location.state?.autoStart) {
+      invoke('close_app').catch(() => window.close())
+    } else {
+      navigate(-1)
+    }
+  }
+
   // Auto-start extraction if triggered from Windows context menu (Extract Here / Extract to folder)
   const autoStartedRef = React.useRef(false)
   useEffect(() => {
@@ -66,7 +74,7 @@ export const ExtractView: React.FC = () => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !busy) {
         e.preventDefault()
-        navigate(-1)
+        handleDismiss()
       } else if (e.key === 'Enter' && !busy && !(e.target instanceof HTMLTextAreaElement)) {
         e.preventDefault()
         handleExtract()
@@ -114,7 +122,13 @@ export const ExtractView: React.FC = () => {
       setProgress(100)
       showMsg('Extraction complete!', 'success')
       if (location.state?.autoStart) {
-        setTimeout(() => navigate(-1), 1200)
+        setTimeout(async () => {
+          try {
+            await invoke('close_app')
+          } catch {
+            window.close()
+          }
+        }, 500)
       } else {
         setTimeout(() => navigate(-1), 800)
       }
@@ -152,7 +166,7 @@ export const ExtractView: React.FC = () => {
           <button
             type="button"
             className="dialog-close-btn"
-            onClick={() => navigate(-1)}
+            onClick={handleDismiss}
             title="Cancel (Esc)"
           >
             ✕
@@ -340,7 +354,7 @@ export const ExtractView: React.FC = () => {
             <button
               type="button"
               className="dialog-btn dialog-btn-secondary"
-              onClick={() => navigate(-1)}
+              onClick={handleDismiss}
               disabled={busy}
             >
               Cancel <span className="key-hint">Esc</span>

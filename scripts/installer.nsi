@@ -15,6 +15,30 @@ SetCompressor /SOLID lzma
 ; Modern UI 2
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
+!include "nsDialogs.nsh"
+!include "LogicLib.nsh"
+
+; Variables for File Association Page
+Var Dialog
+Var Hwnd_Dzip
+Var Hwnd_Zip
+Var Hwnd_7z
+Var Hwnd_Rar
+Var Hwnd_Tar
+Var Hwnd_Iso
+Var Hwnd_Cab
+Var Hwnd_Unix
+Var Hwnd_Pkgs
+
+Var State_Dzip
+Var State_Zip
+Var State_7z
+Var State_Rar
+Var State_Tar
+Var State_Iso
+Var State_Cab
+Var State_Unix
+Var State_Pkgs
 
 ; General
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
@@ -33,6 +57,7 @@ RequestExecutionLevel user
 ; Installer Pages
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
+Page custom AssociationPage AssociationPageLeave
 !insertmacro MUI_PAGE_INSTFILES
 
 ; Finish Page: Option to launch DodaZip
@@ -46,6 +71,122 @@ RequestExecutionLevel user
 
 ; Languages
 !insertmacro MUI_LANGUAGE "English"
+
+; ==============================================================================
+; Initialization & Custom Association Page
+; ==============================================================================
+Function .onInit
+  ; All archive formats selected as default
+  StrCpy $State_Dzip 1
+  StrCpy $State_Zip 1
+  StrCpy $State_7z 1
+  StrCpy $State_Rar 1
+  StrCpy $State_Tar 1
+  StrCpy $State_Iso 1
+  StrCpy $State_Cab 1
+  StrCpy $State_Unix 1
+  StrCpy $State_Pkgs 1
+FunctionEnd
+
+Function AssociationPage
+  !insertmacro MUI_HEADER_TEXT "File Associations" "Choose which archive formats DodaZip should open by default"
+
+  nsDialogs::Create 1018
+  Pop $Dialog
+  ${If} $Dialog == error
+    Abort
+  ${EndIf}
+
+  ${NSD_CreateLabel} 0 0 100% 24u "Select the archive formats you would like DodaZip to open by default:$\r$\n(You can change these associations at any time later in Settings)"
+  Pop $0
+
+  ; Column 1 (Left: 10u to 140u)
+  ${NSD_CreateCheckbox} 10u 28u 130u 12u ".dzip (DodaZip Secure Vault)"
+  Pop $Hwnd_Dzip
+  ${NSD_SetState} $Hwnd_Dzip $State_Dzip
+
+  ${NSD_CreateCheckbox} 10u 44u 130u 12u ".zip (ZIP Archive)"
+  Pop $Hwnd_Zip
+  ${NSD_SetState} $Hwnd_Zip $State_Zip
+
+  ${NSD_CreateCheckbox} 10u 60u 130u 12u ".7z (7-Zip Archive)"
+  Pop $Hwnd_7z
+  ${NSD_SetState} $Hwnd_7z $State_7z
+
+  ${NSD_CreateCheckbox} 10u 76u 130u 12u ".rar (RAR Archive)"
+  Pop $Hwnd_Rar
+  ${NSD_SetState} $Hwnd_Rar $State_Rar
+
+  ${NSD_CreateCheckbox} 10u 92u 130u 12u ".tar (TAR Tarball)"
+  Pop $Hwnd_Tar
+  ${NSD_SetState} $Hwnd_Tar $State_Tar
+
+  ; Column 2 (Right: 155u to 290u)
+  ${NSD_CreateCheckbox} 155u 28u 135u 12u ".iso (Disc Image)"
+  Pop $Hwnd_Iso
+  ${NSD_SetState} $Hwnd_Iso $State_Iso
+
+  ${NSD_CreateCheckbox} 155u 44u 135u 12u ".cab (Windows Cabinet)"
+  Pop $Hwnd_Cab
+  ${NSD_SetState} $Hwnd_Cab $State_Cab
+
+  ${NSD_CreateCheckbox} 155u 60u 135u 12u ".gz, .bz2, .xz (Compressed)"
+  Pop $Hwnd_Unix
+  ${NSD_SetState} $Hwnd_Unix $State_Unix
+
+  ${NSD_CreateCheckbox} 155u 76u 135u 12u ".deb, .dmg (Packages/Images)"
+  Pop $Hwnd_Pkgs
+  ${NSD_SetState} $Hwnd_Pkgs $State_Pkgs
+
+  ; Select All and Deselect All Buttons
+  ${NSD_CreateButton} 10u 114u 65u 14u "Select All"
+  Pop $0
+  ${NSD_OnClick} $0 OnSelectAll
+
+  ${NSD_CreateButton} 80u 114u 65u 14u "Deselect All"
+  Pop $0
+  ${NSD_OnClick} $0 OnDeselectAll
+
+  nsDialogs::Show
+FunctionEnd
+
+Function OnSelectAll
+  Pop $0
+  ${NSD_SetState} $Hwnd_Dzip 1
+  ${NSD_SetState} $Hwnd_Zip 1
+  ${NSD_SetState} $Hwnd_7z 1
+  ${NSD_SetState} $Hwnd_Rar 1
+  ${NSD_SetState} $Hwnd_Tar 1
+  ${NSD_SetState} $Hwnd_Iso 1
+  ${NSD_SetState} $Hwnd_Cab 1
+  ${NSD_SetState} $Hwnd_Unix 1
+  ${NSD_SetState} $Hwnd_Pkgs 1
+FunctionEnd
+
+Function OnDeselectAll
+  Pop $0
+  ${NSD_SetState} $Hwnd_Dzip 0
+  ${NSD_SetState} $Hwnd_Zip 0
+  ${NSD_SetState} $Hwnd_7z 0
+  ${NSD_SetState} $Hwnd_Rar 0
+  ${NSD_SetState} $Hwnd_Tar 0
+  ${NSD_SetState} $Hwnd_Iso 0
+  ${NSD_SetState} $Hwnd_Cab 0
+  ${NSD_SetState} $Hwnd_Unix 0
+  ${NSD_SetState} $Hwnd_Pkgs 0
+FunctionEnd
+
+Function AssociationPageLeave
+  ${NSD_GetState} $Hwnd_Dzip $State_Dzip
+  ${NSD_GetState} $Hwnd_Zip $State_Zip
+  ${NSD_GetState} $Hwnd_7z $State_7z
+  ${NSD_GetState} $Hwnd_Rar $State_Rar
+  ${NSD_GetState} $Hwnd_Tar $State_Tar
+  ${NSD_GetState} $Hwnd_Iso $State_Iso
+  ${NSD_GetState} $Hwnd_Cab $State_Cab
+  ${NSD_GetState} $Hwnd_Unix $State_Unix
+  ${NSD_GetState} $Hwnd_Pkgs $State_Pkgs
+FunctionEnd
 
 ; ==============================================================================
 ; Installation Section
@@ -75,25 +216,6 @@ Section "MainSection" SEC01
   ; Create SendTo Shortcut: Right-click -> Send to -> DodaZip
   CreateShortcut "$SENDTO\DodaZip.lnk" "$INSTDIR\dodazip-ui.exe" "" "$INSTDIR\icon.ico" 0
 
-  ; Register File Association for .dzip
-  WriteRegStr HKCU "Software\Classes\.dzip" "" "DodaZip.Vault"
-  WriteRegStr HKCU "Software\Classes\.dzip" "Content Type" "application/x-dzip"
-  WriteRegStr HKCU "Software\Classes\.dzip" "PerceivedType" "compressed"
-
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault" "" "DodaZip Encrypted Vault"
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\DefaultIcon" "" "$INSTDIR\dzip_file.ico,0"
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\open" "" "Browse in DodaZip"
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\open\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
-
-  ; Register Context Menu for Files and Folders: "Add to Archive with DodaZip"
-  WriteRegStr HKCU "Software\Classes\*\shell\DodaZipCompress" "" "Add to Archive with DodaZip"
-  WriteRegStr HKCU "Software\Classes\*\shell\DodaZipCompress" "Icon" '"$INSTDIR\icon.ico"'
-  WriteRegStr HKCU "Software\Classes\*\shell\DodaZipCompress\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
-
-  WriteRegStr HKCU "Software\Classes\Directory\shell\DodaZipCompress" "" "Add to Archive with DodaZip"
-  WriteRegStr HKCU "Software\Classes\Directory\shell\DodaZipCompress" "Icon" '"$INSTDIR\icon.ico"'
-  WriteRegStr HKCU "Software\Classes\Directory\shell\DodaZipCompress\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
-
   ; Register Explorer SystemFileAssociations for Archives
   !macro RegisterSFA EXT
     WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipOpen" "" "Open in DodaZip"
@@ -107,16 +229,83 @@ Section "MainSection" SEC01
     WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipExtractTo\command" "" '"$INSTDIR\dodazip-ui.exe" --extract-to "%1"'
   !macroend
 
-  !insertmacro RegisterSFA "dzip"
-  !insertmacro RegisterSFA "zip"
-  !insertmacro RegisterSFA "7z"
-  !insertmacro RegisterSFA "rar"
-  !insertmacro RegisterSFA "tar"
-  !insertmacro RegisterSFA "gz"
-  !insertmacro RegisterSFA "bz2"
-  !insertmacro RegisterSFA "xz"
-  !insertmacro RegisterSFA "iso"
-  !insertmacro RegisterSFA "cab"
+  !macro RegisterAssociation EXT FRIENDLY_NAME
+    WriteRegStr HKCU "Software\Classes\.${EXT}" "" "DodaZip.${EXT}"
+    WriteRegStr HKCU "Software\Classes\.${EXT}" "PerceivedType" "compressed"
+    WriteRegStr HKCU "Software\Classes\DodaZip.${EXT}" "" "DodaZip ${FRIENDLY_NAME} (.${EXT})"
+    WriteRegStr HKCU "Software\Classes\DodaZip.${EXT}\DefaultIcon" "" "$INSTDIR\icon.ico,0"
+    WriteRegStr HKCU "Software\Classes\DodaZip.${EXT}\shell\open" "" "Open in DodaZip"
+    WriteRegStr HKCU "Software\Classes\DodaZip.${EXT}\shell\open\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.${EXT}\OpenWithProgids" "DodaZip.${EXT}" ""
+  !macroend
+
+  ; Register Context Menu for Files and Folders: "Add to Archive with DodaZip"
+  WriteRegStr HKCU "Software\Classes\*\shell\DodaZipCompress" "" "Add to Archive with DodaZip"
+  WriteRegStr HKCU "Software\Classes\*\shell\DodaZipCompress" "Icon" '"$INSTDIR\icon.ico"'
+  WriteRegStr HKCU "Software\Classes\*\shell\DodaZipCompress\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
+
+  WriteRegStr HKCU "Software\Classes\Directory\shell\DodaZipCompress" "" "Add to Archive with DodaZip"
+  WriteRegStr HKCU "Software\Classes\Directory\shell\DodaZipCompress" "Icon" '"$INSTDIR\icon.ico"'
+  WriteRegStr HKCU "Software\Classes\Directory\shell\DodaZipCompress\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
+
+  ; Register Selected File Associations
+  ${If} $State_Dzip == 1
+    WriteRegStr HKCU "Software\Classes\.dzip" "" "DodaZip.Vault"
+    WriteRegStr HKCU "Software\Classes\.dzip" "Content Type" "application/x-dzip"
+    WriteRegStr HKCU "Software\Classes\.dzip" "PerceivedType" "compressed"
+    WriteRegStr HKCU "Software\Classes\DodaZip.Vault" "" "DodaZip Encrypted Vault"
+    WriteRegStr HKCU "Software\Classes\DodaZip.Vault\DefaultIcon" "" "$INSTDIR\dzip_file.ico,0"
+    WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\open" "" "Browse in DodaZip"
+    WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\open\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
+    WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.dzip\OpenWithProgids" "DodaZip.Vault" ""
+    !insertmacro RegisterSFA "dzip"
+  ${EndIf}
+
+  ${If} $State_Zip == 1
+    !insertmacro RegisterAssociation "zip" "ZIP Archive"
+    !insertmacro RegisterSFA "zip"
+  ${EndIf}
+
+  ${If} $State_7z == 1
+    !insertmacro RegisterAssociation "7z" "7-Zip Archive"
+    !insertmacro RegisterSFA "7z"
+  ${EndIf}
+
+  ${If} $State_Rar == 1
+    !insertmacro RegisterAssociation "rar" "RAR Archive"
+    !insertmacro RegisterSFA "rar"
+  ${EndIf}
+
+  ${If} $State_Tar == 1
+    !insertmacro RegisterAssociation "tar" "TAR Archive"
+    !insertmacro RegisterSFA "tar"
+  ${EndIf}
+
+  ${If} $State_Iso == 1
+    !insertmacro RegisterAssociation "iso" "Disc Image"
+    !insertmacro RegisterSFA "iso"
+  ${EndIf}
+
+  ${If} $State_Cab == 1
+    !insertmacro RegisterAssociation "cab" "Windows Cabinet"
+    !insertmacro RegisterSFA "cab"
+  ${EndIf}
+
+  ${If} $State_Unix == 1
+    !insertmacro RegisterAssociation "gz" "GZIP Compressed File"
+    !insertmacro RegisterAssociation "bz2" "BZIP2 Compressed File"
+    !insertmacro RegisterAssociation "xz" "XZ Compressed File"
+    !insertmacro RegisterSFA "gz"
+    !insertmacro RegisterSFA "bz2"
+    !insertmacro RegisterSFA "xz"
+  ${EndIf}
+
+  ${If} $State_Pkgs == 1
+    !insertmacro RegisterAssociation "deb" "Debian Package"
+    !insertmacro RegisterAssociation "dmg" "Apple Disk Image"
+    !insertmacro RegisterSFA "deb"
+    !insertmacro RegisterSFA "dmg"
+  ${EndIf}
 
   ; Refresh Windows Explorer Shell Icon Cache
   System::Call 'shell32.dll::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
