@@ -2,7 +2,7 @@ import React from 'react'
 import {
   IconNew, IconOpen, IconAdd, IconExtract, IconBack, IconShieldOk,
   IconX, IconDzip, IconDuplicate, IconRename, IconTrash, IconShred,
-  IconSettings,
+  IconSettings, IconSpeed,
 } from './Icons'
 import { FileInfo } from '../types'
 import { useI18n } from '../utils/i18n'
@@ -12,6 +12,7 @@ interface ToolbarProps {
   onOpen?: () => void
   onAdd?: () => void
   onExtract?: () => void
+  onBenchmark?: () => void
   onSettings?: () => void
   onAbout?: () => void
   onBack?: () => void
@@ -33,7 +34,7 @@ interface ToolbarProps {
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
-  onNew, onOpen, onAdd, onExtract, onSettings, onAbout, onBack,
+  onNew, onOpen, onAdd, onExtract, onBenchmark, onSettings, onAbout, onBack,
   addDisabled = false, showBack = false,
   isArchiveMode = false, archiveName, onTestIntegrity, onCloseArchive,
   selectedArchive, onInspectArchive, onVerifyArchive, onConvertArchive,
@@ -194,6 +195,12 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
       {/* Right-aligned Settings and About buttons */}
       <div className="toolbar-separator" style={{ marginLeft: 'auto' }} />
+      {onBenchmark && (
+        <button className="toolbar-btn" onClick={onBenchmark} title="CPU & Compression Speed Benchmark">
+          <IconSpeed size={18} />
+          <span>{t('toolbar.benchmark', 'Benchmark')}</span>
+        </button>
+      )}
       {onSettings && (
         <button className="toolbar-btn" onClick={onSettings} title="Settings: Updates, Language & Themes">
           <IconSettings size={18} />

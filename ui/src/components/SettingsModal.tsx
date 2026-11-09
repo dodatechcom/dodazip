@@ -883,7 +883,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                     ) : (
                       <div style={{ color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
                         <IconCheck size={16} />
-                        <span>{t('settings.upToDate', `You are using the latest version of DodaZip (v${CURRENT_VERSION}).`)}</span>
+                        <span>{t('settings.upToDate', 'You are using the latest version of DodaZip.')} (v{CURRENT_VERSION})</span>
                       </div>
                     )}
                   </div>

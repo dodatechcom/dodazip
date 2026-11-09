@@ -21,6 +21,7 @@ import { AboutModal } from '../components/AboutModal'
 import { SettingsModal } from '../components/SettingsModal'
 import { CompressModal } from '../components/CompressModal'
 import { DeleteConfirmModal } from '../components/DeleteConfirmModal'
+import { BenchmarkModal } from '../components/BenchmarkModal'
 import {
   FileRowIcon, IconAdd, IconUp, IconEmptyFolder, IconLoader,
   IconSearch, IconClear, IconSortAsc, IconSortDesc, IconSun, IconMoon,
@@ -99,6 +100,7 @@ export const Home: React.FC = () => {
   const [findingDups, setFindingDups] = useState(false)
   const [showAbout, setShowAbout] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showBenchmark, setShowBenchmark] = useState(false)
   const [updateNotice, setUpdateNotice] = useState<UpdateInfo | null>(null)
 
   // Auto-check for updates on application startup
@@ -255,39 +257,49 @@ export const Home: React.FC = () => {
     }
   }, [navigate])
 
-  // Handle opening archive or compressing files passed via Windows Explorer / Command Line
+  // Handle opening archive, extracting, or compressing files passed via Windows Explorer / Command Line
   useEffect(() => {
-    invoke<string[]>('get_launch_files')
-      .then((files) => {
-        if (files && files.length > 0) {
-          if (files.length === 1 && isArchive(files[0])) {
-            openArchiveInBrowser(files[0], getPathBaseName(files[0]))
-          } else {
-            const first = files[0]
-            const parent = getParentPath(first)
-            if (parent) {
-              loadDirectory(parent, false)
-            }
-            openCompressModal(files, parent || undefined)
+    invoke<{ mode: string; files: string[]; output_dir?: string | null }>('get_launch_action')
+      .then((action) => {
+        if (!action || !action.files || action.files.length === 0) return
+        if (action.mode === 'extract_here' || action.mode === 'extract_to') {
+          navigate('/extract', {
+            state: {
+              archivePath: action.files[0],
+              outputDir: action.output_dir,
+              autoStart: true,
+            },
+          })
+        } else if (action.mode === 'open') {
+          openArchiveInBrowser(action.files[0], getPathBaseName(action.files[0]))
+        } else if (action.mode === 'compress') {
+          const first = action.files[0]
+          const parent = getParentPath(first)
+          if (parent) {
+            loadDirectory(parent, false)
           }
+          openCompressModal(action.files, parent || undefined)
         }
       })
       .catch(() => {
-        invoke<string | null>('get_launch_file')
-          .then((file) => {
-            if (file) {
-              if (isArchive(file)) {
-                openArchiveInBrowser(file, getPathBaseName(file))
+        invoke<string[]>('get_launch_files')
+          .then((files) => {
+            if (files && files.length > 0) {
+              if (files.length === 1 && isArchive(files[0])) {
+                openArchiveInBrowser(files[0], getPathBaseName(files[0]))
               } else {
-                const parent = getParentPath(file)
-                if (parent) loadDirectory(parent, false)
-                openCompressModal([file], parent || undefined)
+                const first = files[0]
+                const parent = getParentPath(first)
+                if (parent) {
+                  loadDirectory(parent, false)
+                }
+                openCompressModal(files, parent || undefined)
               }
             }
           })
           .catch(() => {})
       })
-  }, [openArchiveInBrowser, loadDirectory, openCompressModal])
+  }, [navigate, openArchiveInBrowser, loadDirectory, openCompressModal])
 
   const exitArchiveMode = useCallback(() => {
     if (!archiveContext) return
@@ -1251,6 +1263,7 @@ export const Home: React.FC = () => {
             navigate('/extract')
           }
         }}
+        onBenchmark={() => setShowBenchmark(true)}
         onSettings={() => setShowSettings(true)}
         onAbout={() => setShowAbout(true)}
         addDisabled={selectedFiles.size === 0}
@@ -1919,6 +1932,8 @@ export const Home: React.FC = () => {
       )}
 
       <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />
+
+      <BenchmarkModal isOpen={showBenchmark} onClose={() => setShowBenchmark(false)} />
 
       <SettingsModal
         isOpen={showSettings}

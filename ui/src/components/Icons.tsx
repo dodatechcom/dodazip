@@ -311,6 +311,25 @@ export const IconHelp: React.FC<IconProps> = ({ size = 16 }) => (
   </svg>
 )
 
+export const IconSpeed: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 2v2" />
+    <path d="m4.93 4.93 1.41 1.41" />
+    <path d="M20 12h2" />
+    <path d="m19.07 4.93-1.41 1.41" />
+    <path d="M15.93 15.93 12 12" />
+    <circle cx="12" cy="12" r="8" />
+  </svg>
+)
+
+export const IconCpu: React.FC<IconProps> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="4" y="4" width="16" height="16" rx="2" />
+    <rect x="9" y="9" width="6" height="6" />
+    <path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" />
+  </svg>
+)
+
 export const FileRowIcon: React.FC<{ name: string; isDir: boolean }> = ({ name, isDir }) => {
   if (isDir) return <IconFolder size={16} />
   const lower = name.toLowerCase()

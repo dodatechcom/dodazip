@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use dodazip::{
     ArchiveBuilder, ArchiveReader, Codec, CompressionLevel, EccLevel,
-    secure_delete, split_archive_into_volumes,
+    secure_delete, split_archive_into_volumes, compress, decompress,
 };
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter};
@@ -1429,6 +1429,249 @@ fn get_launch_files() -> Vec<String> {
         .collect()
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LaunchAction {
+    pub mode: String, // "normal" | "open" | "extract_here" | "extract_to" | "compress"
+    pub files: Vec<String>,
+    pub output_dir: Option<String>,
+}
+
+#[tauri::command]
+fn get_launch_action() -> LaunchAction {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut files = Vec::new();
+    let mut is_extract_here = false;
+    let mut is_extract_to = false;
+
+    for arg in &args {
+        if arg == "--extract-here" {
+            is_extract_here = true;
+        } else if arg == "--extract-to" {
+            is_extract_to = true;
+        } else if !arg.starts_with("--") && std::path::Path::new(arg).exists() {
+            files.push(arg.clone());
+        }
+    }
+
+    if is_extract_here && !files.is_empty() {
+        let target = Path::new(&files[0]);
+        let parent = target.parent().unwrap_or(Path::new(".")).to_string_lossy().to_string();
+        return LaunchAction {
+            mode: "extract_here".to_string(),
+            files,
+            output_dir: Some(parent),
+        };
+    } else if is_extract_to && !files.is_empty() {
+        let target = Path::new(&files[0]);
+        let parent = target.parent().unwrap_or(Path::new("."));
+        let stem = target.file_stem().unwrap_or_default().to_string_lossy().to_string();
+        let clean_stem = stem.trim_end_matches(".tar");
+        let dest = parent.join(clean_stem).to_string_lossy().to_string();
+        return LaunchAction {
+            mode: "extract_to".to_string(),
+            files,
+            output_dir: Some(dest),
+        };
+    } else if !files.is_empty() {
+        let first = &files[0];
+        let lower = first.to_lowercase();
+        let is_arc = lower.ends_with(".dzip")
+            || lower.ends_with(".zip")
+            || lower.ends_with(".7z")
+            || lower.ends_with(".rar")
+            || lower.ends_with(".tar")
+            || lower.ends_with(".tar.gz")
+            || lower.ends_with(".tgz")
+            || lower.ends_with(".tar.bz2")
+            || lower.ends_with(".tbz2")
+            || lower.ends_with(".tar.xz")
+            || lower.ends_with(".txz")
+            || lower.ends_with(".gz")
+            || lower.ends_with(".bz2")
+            || lower.ends_with(".xz")
+            || lower.ends_with(".iso")
+            || lower.ends_with(".dmg")
+            || lower.ends_with(".cab")
+            || lower.ends_with(".deb")
+            || lower.ends_with(".ar");
+
+        if files.len() == 1 && is_arc {
+            return LaunchAction {
+                mode: "open".to_string(),
+                files,
+                output_dir: None,
+            };
+        } else {
+            return LaunchAction {
+                mode: "compress".to_string(),
+                files,
+                output_dir: None,
+            };
+        }
+    }
+
+    LaunchAction {
+        mode: "normal".to_string(),
+        files: Vec::new(),
+        output_dir: None,
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BenchmarkResult {
+    pub cpu_brand: String,
+    pub cpu_cores: usize,
+    pub data_size_mb: usize,
+    pub compress_speed_mbs: f64,
+    pub decompress_speed_mbs: f64,
+    pub compress_ratio: f64,
+    pub hash_speed_mbs: f64,
+    pub rating_score: u64,
+}
+
+fn get_cpu_info() -> (String, usize) {
+    let cores = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(1);
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let output = std::process::Command::new("reg")
+            .args(&[
+                "query",
+                "HKLM\\HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
+                "/v",
+                "ProcessorNameString",
+            ])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output();
+
+        if let Ok(out) = output {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            for line in stdout.lines() {
+                if line.contains("ProcessorNameString") {
+                    if let Some(pos) = line.find("REG_SZ") {
+                        let name = line[pos + 6..].trim().to_string();
+                        if !name.is_empty() {
+                            return (name, cores);
+                        }
+                    }
+                }
+            }
+        }
+
+        if let Ok(ident) = std::env::var("PROCESSOR_IDENTIFIER") {
+            return (ident, cores);
+        }
+    }
+
+    ("Host Processor".to_string(), cores)
+}
+
+fn generate_benchmark_data(size_bytes: usize) -> Vec<u8> {
+    let mut result = Vec::with_capacity(size_bytes);
+    let patterns: [&[u8]; 6] = [
+        b"The quick brown fox jumps over the lazy dog 1234567890. ",
+        b"DodaZip ultra-high performance compression engine with BLAKE3 and Zstandard. ",
+        b"{\"status\":\"success\",\"code\":200,\"payload\":\"benchmark_data_payload_string\"}, ",
+        b"<html><head><title>Benchmark Test</title></head><body><h1>DodaZip</h1></body></html>",
+        b"0123456789ABCDEF\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F",
+        b"Pack my box with five dozen liquor jugs! How vexingly quick daft zebras jump! ",
+    ];
+
+    let mut i = 0;
+    while result.len() < size_bytes {
+        let pattern = patterns[i % patterns.len()];
+        let repeat = ((i * 13) % 7) + 2;
+        for _ in 0..repeat {
+            if result.len() + pattern.len() <= size_bytes {
+                result.extend_from_slice(pattern);
+            } else {
+                let remaining = size_bytes - result.len();
+                result.extend_from_slice(&pattern[..remaining]);
+                break;
+            }
+        }
+        i += 1;
+    }
+    result
+}
+
+#[tauri::command]
+async fn run_benchmark(data_size_mb: Option<usize>) -> Result<BenchmarkResult, String> {
+    use rayon::prelude::*;
+    use std::time::Instant;
+
+    let size_mb = data_size_mb.unwrap_or(32).clamp(8, 256);
+    let size_bytes = size_mb * 1024 * 1024;
+    let (cpu_brand, cpu_cores) = get_cpu_info();
+
+    tokio::task::spawn_blocking(move || {
+        let test_data = generate_benchmark_data(size_bytes);
+
+        // 1. BLAKE3 Hashing Benchmark (chunked across cores)
+        let hash_start = Instant::now();
+        let chunk_size = 1024 * 1024;
+        let hash_chunks: Vec<&[u8]> = test_data.chunks(chunk_size).collect();
+        let _chunk_hashes: Vec<blake3::Hash> = hash_chunks
+            .par_iter()
+            .map(|chunk| blake3::hash(chunk))
+            .collect();
+        let hash_dur = hash_start.elapsed().as_secs_f64().max(0.0001);
+        let hash_speed_mbs = (size_mb as f64) / hash_dur;
+
+        // 2. Multi-threaded Zstd Compression Benchmark (Balanced Level)
+        let comp_start = Instant::now();
+        let comp_chunks: Vec<Vec<u8>> = hash_chunks
+            .par_iter()
+            .map(|chunk| {
+                compress(chunk, Codec::Zstd, CompressionLevel::Balanced)
+                    .unwrap_or_else(|_| chunk.to_vec())
+            })
+            .collect();
+        let comp_dur = comp_start.elapsed().as_secs_f64().max(0.0001);
+        let compress_speed_mbs = (size_mb as f64) / comp_dur;
+
+        let total_comp_bytes: usize = comp_chunks.iter().map(|c| c.len()).sum();
+        let compress_ratio = if total_comp_bytes > 0 {
+            (size_bytes as f64) / (total_comp_bytes as f64)
+        } else {
+            1.0
+        };
+
+        // 3. Multi-threaded Zstd Decompression Benchmark
+        let decomp_start = Instant::now();
+        let _decomp_chunks: Vec<Vec<u8>> = comp_chunks
+            .par_iter()
+            .zip(&hash_chunks)
+            .map(|(comp, orig)| {
+                decompress(comp, orig.len(), Codec::Zstd)
+                    .unwrap_or_else(|_| comp.clone())
+            })
+            .collect();
+        let decomp_dur = decomp_start.elapsed().as_secs_f64().max(0.0001);
+        let decompress_speed_mbs = (size_mb as f64) / decomp_dur;
+
+        // Combined score
+        let rating_score = ((compress_speed_mbs * 15.0) + (decompress_speed_mbs * 8.0) + (hash_speed_mbs * 2.0)) as u64;
+
+        BenchmarkResult {
+            cpu_brand,
+            cpu_cores,
+            data_size_mb: size_mb,
+            compress_speed_mbs: (compress_speed_mbs * 10.0).round() / 10.0,
+            decompress_speed_mbs: (decompress_speed_mbs * 10.0).round() / 10.0,
+            compress_ratio: (compress_ratio * 100.0).round() / 100.0,
+            hash_speed_mbs: (hash_speed_mbs * 10.0).round() / 10.0,
+            rating_score,
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
 #[cfg(windows)]
 fn register_windows_association() {
     if let Ok(exe_path) = std::env::current_exe() {
@@ -1439,9 +1682,17 @@ fn register_windows_association() {
         let local_app_data = std::env::var("LOCALAPPDATA").unwrap_or_else(|_| "C:\\".into());
         let icon_dir = std::path::PathBuf::from(local_app_data).join("DodaZip");
         let _ = std::fs::create_dir_all(&icon_dir);
-        let icon_path = icon_dir.join("dzip_file.ico");
-        let _ = std::fs::write(&icon_path, include_bytes!("../icons/dzip_file.ico"));
-        let icon_str = icon_path.to_string_lossy();
+        let dzip_icon_path = icon_dir.join("dzip_file.ico");
+        let _ = std::fs::write(&dzip_icon_path, include_bytes!("../icons/dzip_file.ico"));
+        let dzip_icon_str = dzip_icon_path.to_string_lossy();
+
+        let app_icon_path = icon_dir.join("icon.ico");
+        let _ = std::fs::write(&app_icon_path, include_bytes!("../icons/icon.ico"));
+        let app_icon_str = app_icon_path.to_string_lossy();
+
+        let open_cmd = format!("\"{}\" \"%1\"", exe_str);
+        let extract_here_cmd = format!("\"{}\" --extract-here \"%1\"", exe_str);
+        let extract_to_cmd = format!("\"{}\" --extract-to \"%1\"", exe_str);
 
         let _ = std::process::Command::new("reg")
             .args(&["add", "HKCU\\Software\\Classes\\.dzip", "/ve", "/d", "DodaZip.Vault", "/f"])
@@ -1456,14 +1707,45 @@ fn register_windows_association() {
             .creation_flags(CREATE_NO_WINDOW)
             .status();
         let _ = std::process::Command::new("reg")
-            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\DefaultIcon", "/ve", "/d", &format!("\"{}\"", icon_str), "/f"])
+            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\DefaultIcon", "/ve", "/d", &format!("\"{}\"", dzip_icon_str), "/f"])
             .creation_flags(CREATE_NO_WINDOW)
             .status();
-        let cmd_str = format!("\"{}\" \"%1\"", exe_str);
+
         let _ = std::process::Command::new("reg")
-            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\open\\command", "/ve", "/d", &cmd_str, "/f"])
+            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\open", "/ve", "/d", "Open in DodaZip", "/f"])
             .creation_flags(CREATE_NO_WINDOW)
             .status();
+        let _ = std::process::Command::new("reg")
+            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\open\\command", "/ve", "/d", &open_cmd, "/f"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+
+        let _ = std::process::Command::new("reg")
+            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_here", "/ve", "/d", "Extract Here", "/f"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+        let _ = std::process::Command::new("reg")
+            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_here", "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+        let _ = std::process::Command::new("reg")
+            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_here\\command", "/ve", "/d", &extract_here_cmd, "/f"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+
+        let _ = std::process::Command::new("reg")
+            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_to", "/ve", "/d", "Extract to subfolder", "/f"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+        let _ = std::process::Command::new("reg")
+            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_to", "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+        let _ = std::process::Command::new("reg")
+            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_to\\command", "/ve", "/d", &extract_to_cmd, "/f"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .status();
+
         let _ = std::process::Command::new("reg")
             .args(&["add", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.dzip\\OpenWithProgids", "/v", "DodaZip.Vault", "/t", "REG_NONE", "/f"])
             .creation_flags(CREATE_NO_WINDOW)
@@ -1472,6 +1754,66 @@ fn register_windows_association() {
             .args(&["delete", "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.dzip\\UserChoice", "/f"])
             .creation_flags(CREATE_NO_WINDOW)
             .status();
+
+        // Register Windows Explorer SystemFileAssociations for all archive types
+        for &ext in SUPPORTED_ASSOCIATIONS {
+            let sfa = format!("HKCU\\Software\\Classes\\SystemFileAssociations\\.{}\\shell", ext);
+
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZip.Open", sfa), "/ve", "/d", "Open in DodaZip", "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZip.Open", sfa), "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZip.Open\\command", sfa), "/ve", "/d", &open_cmd, "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZip.ExtractHere", sfa), "/ve", "/d", "Extract Here", "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZip.ExtractHere", sfa), "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZip.ExtractHere\\command", sfa), "/ve", "/d", &extract_here_cmd, "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZip.ExtractTo", sfa), "/ve", "/d", "Extract to subfolder", "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZip.ExtractTo", sfa), "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZip.ExtractTo\\command", sfa), "/ve", "/d", &extract_to_cmd, "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+        }
+
+        // Add to Archive context menu on files and folders
+        for &base in &["HKCU\\Software\\Classes\\*\\shell\\DodaZipCompress", "HKCU\\Software\\Classes\\Directory\\shell\\DodaZipCompress"] {
+            let _ = std::process::Command::new("reg")
+                .args(&["add", base, "/ve", "/d", "Add to Archive with DodaZip", "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", base, "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\command", base), "/ve", "/d", &open_cmd, "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+        }
     }
 }
 
@@ -1601,6 +1943,8 @@ async fn set_file_associations(associations: HashMap<String, bool>) -> Result<()
                     format!("\"{}\",0", exe_str)
                 };
                 let cmd_str = format!("\"{}\" \"%1\"", exe_str);
+                let extract_here_cmd = format!("\"{}\" --extract-here \"%1\"", exe_str);
+                let extract_to_cmd = format!("\"{}\" --extract-to \"%1\"", exe_str);
 
                 let _ = std::process::Command::new("reg")
                     .args(&["add", &format!("HKCU\\Software\\Classes\\.{}", ext), "/ve", "/d", &prog_id, "/f"])
@@ -1618,10 +1962,42 @@ async fn set_file_associations(associations: HashMap<String, bool>) -> Result<()
                     .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\DefaultIcon", prog_id), "/ve", "/d", &icon_str, "/f"])
                     .creation_flags(CREATE_NO_WINDOW)
                     .status();
+
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\open", prog_id), "/ve", "/d", "Open in DodaZip", "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
                 let _ = std::process::Command::new("reg")
                     .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\open\\command", prog_id), "/ve", "/d", &cmd_str, "/f"])
                     .creation_flags(CREATE_NO_WINDOW)
                     .status();
+
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_here", prog_id), "/ve", "/d", "Extract Here", "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_here", prog_id), "/v", "Icon", "/d", &icon_str, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_here\\command", prog_id), "/ve", "/d", &extract_here_cmd, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_to", prog_id), "/ve", "/d", "Extract to subfolder", "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_to", prog_id), "/v", "Icon", "/d", &icon_str, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_to\\command", prog_id), "/ve", "/d", &extract_to_cmd, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+
                 let _ = std::process::Command::new("reg")
                     .args(&["add", &format!("HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\.{}\\OpenWithProgids", ext), "/v", &prog_id, "/t", "REG_NONE", "/f"])
                     .creation_flags(CREATE_NO_WINDOW)
@@ -1699,6 +2075,8 @@ pub fn run() {
             verify_archive,
             get_launch_file,
             get_launch_files,
+            get_launch_action,
+            run_benchmark,
             rename_file,
             convert_archive,
             delete_file,

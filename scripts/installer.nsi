@@ -84,10 +84,14 @@ Section "MainSection" SEC01
   WriteRegStr HKCU "Software\Classes\DodaZip.Vault\DefaultIcon" "" "$INSTDIR\dzip_file.ico,0"
   WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\open" "" "Browse in DodaZip"
   WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\open\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract" "" "Extract with DodaZip"
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
+  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_here" "" "Extract Here"
+  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_here" "Icon" '"$INSTDIR\icon.ico"'
+  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_here\command" "" '"$INSTDIR\dodazip-ui.exe" --extract-here "%1"'
+  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_to" "" "Extract to subfolder"
+  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_to" "Icon" '"$INSTDIR\icon.ico"'
+  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_to\command" "" '"$INSTDIR\dodazip-ui.exe" --extract-to "%1"'
 
-  ; Register Context Menu for Files and Folders: "Compress with DodaZip"
+  ; Register Context Menu for Files and Folders: "Add to Archive with DodaZip"
   WriteRegStr HKCU "Software\Classes\*\shell\DodaZipCompress" "" "Add to Archive with DodaZip"
   WriteRegStr HKCU "Software\Classes\*\shell\DodaZipCompress" "Icon" '"$INSTDIR\icon.ico"'
   WriteRegStr HKCU "Software\Classes\*\shell\DodaZipCompress\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
@@ -95,6 +99,30 @@ Section "MainSection" SEC01
   WriteRegStr HKCU "Software\Classes\Directory\shell\DodaZipCompress" "" "Add to Archive with DodaZip"
   WriteRegStr HKCU "Software\Classes\Directory\shell\DodaZipCompress" "Icon" '"$INSTDIR\icon.ico"'
   WriteRegStr HKCU "Software\Classes\Directory\shell\DodaZipCompress\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
+
+  ; Register Explorer SystemFileAssociations for Archives
+  !macro RegisterSFA EXT
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipOpen" "" "Open in DodaZip"
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipOpen" "Icon" '"$INSTDIR\icon.ico"'
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipOpen\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipExtractHere" "" "Extract Here"
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipExtractHere" "Icon" '"$INSTDIR\icon.ico"'
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipExtractHere\command" "" '"$INSTDIR\dodazip-ui.exe" --extract-here "%1"'
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipExtractTo" "" "Extract to subfolder"
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipExtractTo" "Icon" '"$INSTDIR\icon.ico"'
+    WriteRegStr HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipExtractTo\command" "" '"$INSTDIR\dodazip-ui.exe" --extract-to "%1"'
+  !macroend
+
+  !insertmacro RegisterSFA "dzip"
+  !insertmacro RegisterSFA "zip"
+  !insertmacro RegisterSFA "7z"
+  !insertmacro RegisterSFA "rar"
+  !insertmacro RegisterSFA "tar"
+  !insertmacro RegisterSFA "gz"
+  !insertmacro RegisterSFA "bz2"
+  !insertmacro RegisterSFA "xz"
+  !insertmacro RegisterSFA "iso"
+  !insertmacro RegisterSFA "cab"
 
   ; Refresh Windows Explorer Shell Icon Cache
   System::Call 'shell32.dll::SHChangeNotify(i 0x08000000, i 0, i 0, i 0)'
@@ -153,6 +181,24 @@ Section "Uninstall"
   DeleteRegKey HKCU "Software\Classes\.dzip"
   DeleteRegKey HKCU "Software\Classes\*\shell\DodaZipCompress"
   DeleteRegKey HKCU "Software\Classes\Directory\shell\DodaZipCompress"
+
+  ; Clean up SystemFileAssociations
+  !macro UnregisterSFA EXT
+    DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipOpen"
+    DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipExtractHere"
+    DeleteRegKey HKCU "Software\Classes\SystemFileAssociations\.${EXT}\shell\DodaZipExtractTo"
+  !macroend
+
+  !insertmacro UnregisterSFA "dzip"
+  !insertmacro UnregisterSFA "zip"
+  !insertmacro UnregisterSFA "7z"
+  !insertmacro UnregisterSFA "rar"
+  !insertmacro UnregisterSFA "tar"
+  !insertmacro UnregisterSFA "gz"
+  !insertmacro UnregisterSFA "bz2"
+  !insertmacro UnregisterSFA "xz"
+  !insertmacro UnregisterSFA "iso"
+  !insertmacro UnregisterSFA "cab"
 
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_DIR_REGKEY}"
   DeleteRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_UNINST_KEY}"

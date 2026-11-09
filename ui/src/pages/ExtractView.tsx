@@ -52,6 +52,15 @@ export const ExtractView: React.FC = () => {
     }
   }, [archivePath])
 
+  // Auto-start extraction if triggered from Windows context menu (Extract Here / Extract to folder)
+  const autoStartedRef = React.useRef(false)
+  useEffect(() => {
+    if (location.state?.autoStart && archivePath && outputDir && !autoStartedRef.current) {
+      autoStartedRef.current = true
+      handleExtract()
+    }
+  }, [archivePath, outputDir])
+
   // Keyboard navigation: Enter to extract, Escape to close
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -99,12 +108,16 @@ export const ExtractView: React.FC = () => {
         outputDir,
         options: {
           password: usePassword && password ? password : null,
-          smart_unpack: smartUnpack,
+          smart_unpack: location.state?.autoStart ? false : smartUnpack,
         },
       })
       setProgress(100)
       showMsg('Extraction complete!', 'success')
-      setTimeout(() => navigate(-1), 800)
+      if (location.state?.autoStart) {
+        setTimeout(() => navigate(-1), 1200)
+      } else {
+        setTimeout(() => navigate(-1), 800)
+      }
     } catch (error) {
       showMsg(`Extraction failed: ${error}`, 'error')
       setBusy(false)

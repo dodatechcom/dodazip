@@ -15,5 +15,5 @@
       "dmg": "https://updates.dodatech.com/dodazip/releases/macos/DodaZip-v0.2.0.dmg"
     }
   },
-  "notes": "DodaZip v0.2.0 Feature Release:\n- High-definition 3D compression icon for application & .dzip files\n- File & Folder metadata attributes: Type, Date Modified, Attributes\n- Multi-column sorting (Name, Size, Type, Date Modified)\n- Redesigned Master-Detail vertical sidebar Settings dialog\n- Clean software update flow\n- Expanded 88-language localization suite"
+  "notes": "DodaZip v0.2.0 Feature Release:\n- Windows Explorer Context Menu integration (Extract Here, Extract to subfolder, Open in DodaZip)\n- Multi-threaded CPU & Compression Speed Benchmark utility (Zstd compression/decompression MB/s & BLAKE3 throughput)\n- High-definition 3D compression icon for application & .dzip files\n- Extended File & Folder metadata attributes (Type, Date Modified, Attributes) with multi-column sorting\n- Redesigned Master-Detail vertical sidebar Settings dialog with dynamic version reporting\n- Expanded 88-language localization suite"
 }

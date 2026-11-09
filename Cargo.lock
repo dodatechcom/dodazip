@@ -1198,6 +1198,7 @@ dependencies = [
  "dpp",
  "flate2",
  "iso9660",
+ "rayon",
  "serde",
  "sevenz-rust",
  "tar",
