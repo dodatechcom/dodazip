@@ -1149,7 +1149,7 @@ dependencies = [
 
 [[package]]
 name = "dodazip"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "argon2",
@@ -1186,7 +1186,7 @@ dependencies = [
 
 [[package]]
 name = "dodazip-ui"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "ar",

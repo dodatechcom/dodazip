@@ -1,19 +1,19 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "releaseDate": "2026-11-09",
-  "downloadUrl": "https://updates.dodatech.com/dodazip/releases/windows/DodaZip-Setup-v0.1.0.exe",
+  "downloadUrl": "https://updates.dodatech.com/dodazip/releases/windows/DodaZip-Setup-v0.2.0.exe",
   "platforms": {
     "windows": {
-      "installer": "https://updates.dodatech.com/dodazip/releases/windows/DodaZip-Setup-v0.1.0.exe",
-      "portable": "https://updates.dodatech.com/dodazip/releases/windows/DodaZip-v0.1.0-windows-x64-portable.zip"
+      "installer": "https://updates.dodatech.com/dodazip/releases/windows/DodaZip-Setup-v0.2.0.exe",
+      "portable": "https://updates.dodatech.com/dodazip/releases/windows/DodaZip-v0.2.0-windows-x64-portable.zip"
     },
     "linux": {
-      "appImage": "https://updates.dodatech.com/dodazip/releases/linux/dodazip-0.1.0-x86_64.AppImage",
-      "deb": "https://updates.dodatech.com/dodazip/releases/linux/dodazip_0.1.0_amd64.deb"
+      "appImage": "https://updates.dodatech.com/dodazip/releases/linux/dodazip-0.2.0-x86_64.AppImage",
+      "deb": "https://updates.dodatech.com/dodazip/releases/linux/dodazip_0.2.0_amd64.deb"
     },
     "macos": {
-      "dmg": "https://updates.dodatech.com/dodazip/releases/macos/DodaZip-v0.1.0.dmg"
+      "dmg": "https://updates.dodatech.com/dodazip/releases/macos/DodaZip-v0.2.0.dmg"
     }
   },
-  "notes": "DodaZip v0.1.0\n- High-Trust Vault Engine (.dzip)\n- AES-256 military encryption & BLAKE3 integrity verification\n- Full 88-language localization suite with search filter\n- File association manager in Settings for archive formats (.dzip, .zip, .7z, .iso, etc.)\n- High-definition 3D vault icon for .dzip file type\n- Cross-platform support for Windows, Linux & macOS"
+  "notes": "DodaZip v0.2.0 Feature Release:\n- High-definition 3D compression icon for application & .dzip files\n- File & Folder metadata attributes: Type, Date Modified, Attributes\n- Multi-column sorting (Name, Size, Type, Date Modified)\n- Redesigned Master-Detail vertical sidebar Settings dialog\n- Clean software update flow\n- Expanded 88-language localization suite"
 }

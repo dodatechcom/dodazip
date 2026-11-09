@@ -1,4 +1,4 @@
-export const CURRENT_VERSION = '0.1.0'
+export const CURRENT_VERSION = '0.2.0'
 export const DEFAULT_UPDATE_SERVER = 'https://updates.dodatech.com/dodazip/latest.json'
 export const GITHUB_FALLBACK_API = 'https://api.github.com/repos/dodatechcom/dodazip/releases/latest'
 

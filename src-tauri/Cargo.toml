@@ -1,6 +1,6 @@
 [package]
 name = "dodazip-ui"
-version = "0.1.0"
+version = "0.2.0"
 description = "DodaZip - Cross-Platform Compression Tool UI"
 authors = ["you"]
 edition = "2021"

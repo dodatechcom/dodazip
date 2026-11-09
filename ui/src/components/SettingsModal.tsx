@@ -791,25 +791,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                   </label>
                 </div>
 
-                {/* CDN Channel Notice */}
-                <div
-                  style={{
-                    padding: '10px 14px',
-                    background: 'var(--bg-card)',
-                    borderRadius: 8,
-                    border: '1px solid var(--border-light)',
-                    fontSize: 11,
-                    color: 'var(--text-secondary)',
-                    lineHeight: 1.5,
-                    marginBottom: 16,
-                  }}
-                >
-                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Official CDN Channel: </span>
-                  Cloudflare R2 (<code>https://updates.dodatech.com/dodazip/latest.json</code>) with secondary GitHub API fallback.
-                </div>
-
                 {/* Check button */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 16 }}>
                   <button
                     onClick={handleCheckUpdatesNow}
                     disabled={checking}

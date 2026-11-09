@@ -3,7 +3,7 @@
 ; ==============================================================================
 
 !define PRODUCT_NAME "DodaZip"
-!define PRODUCT_VERSION "0.1.0"
+!define PRODUCT_VERSION "0.2.0"
 !define PRODUCT_PUBLISHER "DodaTech"
 !define PRODUCT_WEB_SITE "https://dodatech.com/docs/dodazip/"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\dodazip-ui.exe"
@@ -18,7 +18,7 @@ SetCompressor /SOLID lzma
 
 ; General
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "..\dist\DodaZip-Setup-v0.1.0.exe"
+OutFile "..\dist\DodaZip-Setup-v0.2.0.exe"
 InstallDir "$LOCALAPPDATA\Programs\${PRODUCT_NAME}"
 InstallDirRegKey ${PRODUCT_UNINST_ROOT_KEY} "${PRODUCT_DIR_REGKEY}" ""
 RequestExecutionLevel user
