@@ -163,6 +163,18 @@ Compiled binaries will be available in `target/release/` and installer in `dist/
 
 ---
 
+## 🗺️ Future Roadmap (v0.3.0+)
+
+The following planned enhancements are tracked for upcoming releases:
+
+1. **📦 Self-Extracting Archives (SFX):** Generate standalone `.exe` archives that extract themselves on any Windows PC without requiring DodaZip or third-party archivers installed.
+2. **☁️ Cloudflare R2 Bucket CDN Sync:** Automated S3-compatible deployment workflow to publish release assets directly to Cloudflare R2 for custom-domain CDN downloads (`download.dodatech.com`).
+3. **🐧 Cross-Platform Packaging (Linux & macOS):** Release native desktop bundles for Ubuntu/Debian (`.deb`), Fedora (`.rpm`), Linux tarballs (`.tar.gz`), and macOS (`.dmg`).
+4. **💬 Archive Comments & Annotations:** Support viewing, editing, and cryptographic signing of embedded archive comments and metadata notes.
+5. **🪟 Windows 11 Modern Context Menu:** Sparse Package / `IExplorerCommand` integration for direct placement in the primary Windows 11 context menu.
+
+---
+
 ## 📄 License & Documentation
 
 * **Official Documentation:** [https://dodatech.com/docs/dodazip/](https://dodatech.com/docs/dodazip/)
