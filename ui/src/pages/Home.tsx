@@ -4,6 +4,8 @@ import { safeInvoke as invoke, safeStartDrag, safePickArchiveOrFile, safeOpenUrl
 import { FileInfo, Bookmark, DuplicateGroup, TabState, ArchiveEntry, ArchiveContext } from '../types'
 import {
   formatSize,
+  formatDate,
+  getFileType,
   getPathBaseName,
   getParentPath,
   getPathSegments,
@@ -26,7 +28,7 @@ import {
   IconExtract,
 } from '../components/Icons'
 
-type SortKey = 'name' | 'size'
+type SortKey = 'name' | 'size' | 'type' | 'modified'
 type SortDir = 'asc' | 'desc'
 
 let tabCounter = 0
@@ -596,6 +598,18 @@ export const Home: React.FC = () => {
       if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1
       const mul = sortDir === 'asc' ? 1 : -1
       if (sortKey === 'size') return (a.size - b.size) * mul
+      if (sortKey === 'type') {
+        const typeA = a.file_type || (a.is_dir ? 'File folder' : getFileType(a.name, false))
+        const typeB = b.file_type || (b.is_dir ? 'File folder' : getFileType(b.name, false))
+        const cmp = typeA.localeCompare(typeB)
+        return cmp !== 0 ? cmp * mul : a.name.localeCompare(b.name)
+      }
+      if (sortKey === 'modified') {
+        const modA = a.modified || 0
+        const modB = b.modified || 0
+        const cmp = modA - modB
+        return cmp !== 0 ? cmp * mul : a.name.localeCompare(b.name)
+      }
       return a.name.localeCompare(b.name) * mul
     })
   }, [displayedFiles, filterQuery, sortKey, sortDir])
@@ -1672,14 +1686,23 @@ export const Home: React.FC = () => {
                   <th className="sortable-th" onClick={() => toggleSort('name')}>
                     Name <SortIcon k="name" />
                   </th>
-                  <th className="size-cell sortable-th" style={{ width: 110 }} onClick={() => toggleSort('size')}>
+                  <th className="size-cell sortable-th" style={{ width: 95 }} onClick={() => toggleSort('size')}>
                     Size <SortIcon k="size" />
+                  </th>
+                  <th className="sortable-th" style={{ width: 150 }} onClick={() => toggleSort('type')}>
+                    Type <SortIcon k="type" />
+                  </th>
+                  <th className="sortable-th" style={{ width: 135 }} onClick={() => toggleSort('modified')}>
+                    Date modified <SortIcon k="modified" />
+                  </th>
+                  <th style={{ width: 75, textAlign: 'center' }}>
+                    Attributes
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
-                  <tr><td colSpan={3}>
+                  <tr><td colSpan={6}>
                     <div className="loading-state">
                       <IconLoader size={28} />
                       <div>Loading files...</div>
@@ -1687,7 +1710,7 @@ export const Home: React.FC = () => {
                   </td></tr>
                 )}
                 {!loading && filteredFiles.length === 0 && (
-                  <tr><td colSpan={3}>
+                  <tr><td colSpan={6}>
                     <div className="empty-state">
                       <IconEmptyFolder size={40} />
                       <div>{filterQuery ? 'No files match your filter' : (archiveContext ? 'This archive folder is empty' : 'This folder is empty')}</div>
@@ -1740,6 +1763,15 @@ export const Home: React.FC = () => {
                       </span>
                     </td>
                     <td className="size-cell">{file.size ? formatSize(file.size) : (file.is_dir ? 'Folder' : '0 B')}</td>
+                    <td className="type-cell" title={file.file_type || getFileType(file.name, file.is_dir)}>
+                      {file.file_type || getFileType(file.name, file.is_dir)}
+                    </td>
+                    <td className="date-cell">
+                      {formatDate(file.modified)}
+                    </td>
+                    <td className="attr-cell" style={{ textAlign: 'center' }}>
+                      {file.attributes || (file.is_dir ? 'D' : 'A')}
+                    </td>
                   </tr>
                 ))}
               </tbody>

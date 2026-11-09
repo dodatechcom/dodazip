@@ -4,6 +4,9 @@ export interface FileInfo {
   size: number
   is_dir: boolean
   is_file: boolean
+  modified?: number | null
+  file_type?: string | null
+  attributes?: string | null
 }
 
 export interface ArchiveEntry {
@@ -50,7 +53,7 @@ export interface TabState {
   label: string
   archiveContext?: ArchiveContext | null
   filterQuery?: string
-  sortKey?: 'name' | 'size'
+  sortKey?: 'name' | 'size' | 'type' | 'modified'
   sortDir?: 'asc' | 'desc'
   selectedFiles?: string[]
   scrollPosition?: number

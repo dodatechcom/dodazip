@@ -47,6 +47,73 @@ export const ARCHIVE_TYPES = [
   { ext: 'xz', label: 'XZ Compressed' },
 ]
 
+export const formatDate = (epochSeconds?: number | null): string => {
+  if (!epochSeconds) return '—'
+  const d = new Date(epochSeconds * 1000)
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  const yyyy = d.getFullYear()
+  const mm = pad(d.getMonth() + 1)
+  const dd = pad(d.getDate())
+  const hh = pad(d.getHours())
+  const min = pad(d.getMinutes())
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}`
+}
+
+export const getFileType = (name: string, isDir: boolean): string => {
+  if (isDir) return 'File folder'
+  const ext = getFileExtension(name).replace(/^\./, '').toLowerCase()
+  switch (ext) {
+    case 'dzip': return 'DodaZip Vault'
+    case 'zip': return 'ZIP Archive'
+    case '7z': return '7-Zip Archive'
+    case 'rar': return 'RAR Archive'
+    case 'tar': return 'TAR Archive'
+    case 'tar.gz': case 'tgz': case 'gz': return 'GZIP Compressed'
+    case 'tar.bz2': case 'tbz2': case 'bz2': return 'BZIP2 Compressed'
+    case 'tar.xz': case 'txz': case 'xz': return 'XZ Compressed'
+    case 'iso': return 'Disc Image (ISO)'
+    case 'dmg': return 'Apple Disk Image'
+    case 'cab': return 'Windows Cabinet'
+    case 'deb': return 'Debian Package'
+    case 'rpm': return 'RPM Package'
+    case 'exe': return 'Application'
+    case 'msi': return 'Windows Installer'
+    case 'bat': case 'cmd': return 'Command Script'
+    case 'ps1': return 'PowerShell Script'
+    case 'sh': return 'Shell Script'
+    case 'jpg': case 'jpeg': return 'JPEG Image'
+    case 'png': return 'PNG Image'
+    case 'gif': return 'GIF Image'
+    case 'svg': return 'SVG Image'
+    case 'webp': return 'WebP Image'
+    case 'ico': return 'Icon File'
+    case 'mp4': case 'mkv': case 'avi': case 'mov': case 'wmv': return 'Video File'
+    case 'mp3': case 'wav': case 'flac': case 'aac': return 'Audio File'
+    case 'pdf': return 'PDF Document'
+    case 'doc': case 'docx': return 'Word Document'
+    case 'xls': case 'xlsx': return 'Excel Worksheet'
+    case 'ppt': case 'pptx': return 'PowerPoint Presentation'
+    case 'txt': return 'Text Document'
+    case 'md': return 'Markdown File'
+    case 'json': return 'JSON Document'
+    case 'xml': return 'XML Document'
+    case 'csv': return 'CSV Spreadsheet'
+    case 'html': case 'htm': return 'HTML Document'
+    case 'css': return 'CSS Stylesheet'
+    case 'js': return 'JavaScript File'
+    case 'ts': case 'tsx': return 'TypeScript File'
+    case 'rs': return 'Rust Source'
+    case 'py': return 'Python Source'
+    case 'c': case 'cpp': case 'h': return 'C/C++ Source'
+    case 'dll': return 'Application Extension'
+    case 'sys': return 'System File'
+    case 'log': return 'Log File'
+    case 'ini': case 'cfg': case 'toml': case 'yaml': case 'yml': return 'Configuration'
+    case '': return 'File'
+    default: return `${ext.toUpperCase()} File`
+  }
+}
+
 export const sortByTypeAndName = (files: FileInfo[]): FileInfo[] =>
   [...files].sort((a, b) => {
     if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1
@@ -80,6 +147,9 @@ export function getArchiveDirectoryItems(entries: ArchiveEntry[], innerPath: str
         size: entry.size,
         is_dir: false,
         is_file: true,
+        modified: null,
+        file_type: getFileType(parts[0], false),
+        attributes: 'A',
       })
     } else {
       const folderName = parts[0]
@@ -99,6 +169,9 @@ export function getArchiveDirectoryItems(entries: ArchiveEntry[], innerPath: str
       size: data.size,
       is_dir: true,
       is_file: false,
+      modified: null,
+      file_type: 'File folder',
+      attributes: 'D',
     }
   })
 

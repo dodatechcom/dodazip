@@ -63,6 +63,118 @@ pub struct FileInfo {
     pub size: u64,
     pub is_dir: bool,
     pub is_file: bool,
+    pub modified: Option<u64>,
+    pub file_type: Option<String>,
+    pub attributes: Option<String>,
+}
+
+#[cfg(windows)]
+fn get_file_attributes_str(metadata: &std::fs::Metadata) -> String {
+    use std::os::windows::fs::MetadataExt;
+    let attr = metadata.file_attributes();
+    let mut s = String::new();
+    if metadata.is_dir() {
+        s.push('D');
+    }
+    // FILE_ATTRIBUTE_READONLY = 0x00000001
+    if (attr & 0x00000001) != 0 {
+        s.push('R');
+    }
+    // FILE_ATTRIBUTE_HIDDEN = 0x00000002
+    if (attr & 0x00000002) != 0 {
+        s.push('H');
+    }
+    // FILE_ATTRIBUTE_SYSTEM = 0x00000004
+    if (attr & 0x00000004) != 0 {
+        s.push('S');
+    }
+    // FILE_ATTRIBUTE_ARCHIVE = 0x00000020
+    if (attr & 0x00000020) != 0 {
+        s.push('A');
+    }
+    if s.is_empty() {
+        if metadata.is_file() { "A".to_string() } else { "".to_string() }
+    } else {
+        s
+    }
+}
+
+#[cfg(not(windows))]
+fn get_file_attributes_str(metadata: &std::fs::Metadata) -> String {
+    if metadata.is_dir() { "D".to_string() } else { "A".to_string() }
+}
+
+fn get_file_type_str(name: &str, is_dir: bool) -> String {
+    if is_dir {
+        return "File folder".to_string();
+    }
+    let lower = name.to_lowercase();
+    if lower.ends_with(".tar.gz") || lower.ends_with(".tgz") {
+        return "GZIP Tarball Archive".to_string();
+    }
+    if lower.ends_with(".tar.bz2") || lower.ends_with(".tbz2") {
+        return "BZIP2 Tarball Archive".to_string();
+    }
+    if lower.ends_with(".tar.xz") || lower.ends_with(".txz") {
+        return "XZ Tarball Archive".to_string();
+    }
+    let ext = std::path::Path::new(name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    match ext.as_str() {
+        "dzip" => "DodaZip Secure Vault",
+        "zip" => "ZIP Archive",
+        "7z" => "7-Zip Archive",
+        "rar" => "RAR Archive",
+        "tar" => "TAR Archive",
+        "gz" => "GZIP Compressed File",
+        "bz2" => "BZIP2 Compressed File",
+        "xz" => "XZ Compressed File",
+        "iso" => "Disc Image (ISO)",
+        "dmg" => "Apple Disk Image",
+        "cab" => "Windows Cabinet File",
+        "deb" => "Debian Linux Package",
+        "rpm" => "Red Hat Package",
+        "exe" => "Application",
+        "msi" => "Windows Installer Package",
+        "bat" | "cmd" => "Windows Command Script",
+        "ps1" => "PowerShell Script",
+        "sh" => "Shell Script",
+        "jpg" | "jpeg" => "JPEG Image",
+        "png" => "PNG Image",
+        "gif" => "GIF Image",
+        "bmp" => "Bitmap Image",
+        "svg" => "SVG Vector Image",
+        "webp" => "WebP Image",
+        "ico" => "Icon File",
+        "mp4" | "mkv" | "avi" | "mov" | "wmv" | "webm" => "Video File",
+        "mp3" | "wav" | "flac" | "aac" | "ogg" | "m4a" => "Audio File",
+        "pdf" => "PDF Document",
+        "doc" | "docx" => "Microsoft Word Document",
+        "xls" | "xlsx" => "Microsoft Excel Worksheet",
+        "ppt" | "pptx" => "Microsoft PowerPoint Presentation",
+        "txt" => "Text Document",
+        "md" => "Markdown Document",
+        "json" => "JSON Document",
+        "xml" => "XML Document",
+        "csv" => "CSV Spreadsheet",
+        "html" | "htm" => "HTML Document",
+        "css" => "Cascading Style Sheet",
+        "js" => "JavaScript File",
+        "ts" | "tsx" => "TypeScript File",
+        "rs" => "Rust Source File",
+        "py" => "Python Source File",
+        "c" | "cpp" | "h" | "hpp" => "C/C++ Source File",
+        "java" => "Java Source File",
+        "dll" => "Application Extension",
+        "sys" => "System File",
+        "log" => "Log File",
+        "ini" | "cfg" | "conf" | "toml" | "yaml" | "yml" => "Configuration File",
+        "" => "File",
+        other => return format!("{} File", other.to_uppercase()),
+    }.to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -143,6 +255,9 @@ async fn list_directory(path: Option<String>) -> Result<Vec<FileInfo>, String> {
             size: 0,
             is_dir: true,
             is_file: false,
+            modified: None,
+            file_type: Some("File folder".to_string()),
+            attributes: Some("D".to_string()),
         });
     }
 
@@ -152,13 +267,24 @@ async fn list_directory(path: Option<String>) -> Result<Vec<FileInfo>, String> {
     for entry in read_dir {
         let entry = entry.map_err(|e| e.to_string())?;
         let metadata = entry.metadata().map_err(|e| e.to_string())?;
+        let file_name = entry.file_name().to_string_lossy().to_string();
+        let is_dir = metadata.is_dir();
+        let modified = metadata.modified()
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs());
+        let file_type = Some(get_file_type_str(&file_name, is_dir));
+        let attributes = Some(get_file_attributes_str(&metadata));
         
         entries.push(FileInfo {
             path: entry.path().to_string_lossy().to_string(),
-            name: entry.file_name().to_string_lossy().to_string(),
+            name: file_name,
             size: metadata.len(),
-            is_dir: metadata.is_dir(),
+            is_dir,
             is_file: metadata.is_file(),
+            modified,
+            file_type,
+            attributes,
         });
     }
 

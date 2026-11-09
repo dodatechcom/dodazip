@@ -898,46 +898,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                         ⚠️ {updateResult.error}
                       </div>
                     ) : (
-                      <div>
-                        <div style={{ color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                          <IconCheck size={15} />
-                          {t('settings.upToDate', `You are using the latest version of DodaZip (v${CURRENT_VERSION}).`)}
-                        </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                          Your installation matches the latest release on <code>updates.dodatech.com</code>. You can re-download the packages directly at any time:
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button
-                            onClick={() => safeOpenUrl('https://updates.dodatech.com/dodazip/releases/windows/DodaZip-Setup-v0.1.0.exe')}
-                            style={{
-                              padding: '5px 12px',
-                              borderRadius: 6,
-                              background: 'var(--bg-surface)',
-                              border: '1px solid var(--border-light)',
-                              color: 'var(--text-primary)',
-                              fontSize: 11,
-                              cursor: 'pointer',
-                              fontWeight: 500,
-                            }}
-                          >
-                            Download Setup (v0.1.0) ↗
-                          </button>
-                          <button
-                            onClick={() => safeOpenUrl('https://updates.dodatech.com/dodazip/releases/windows/DodaZip-v0.1.0-windows-x64-portable.zip')}
-                            style={{
-                              padding: '5px 12px',
-                              borderRadius: 6,
-                              background: 'var(--bg-surface)',
-                              border: '1px solid var(--border-light)',
-                              color: 'var(--text-primary)',
-                              fontSize: 11,
-                              cursor: 'pointer',
-                              fontWeight: 500,
-                            }}
-                          >
-                            Download Portable ZIP ↗
-                          </button>
-                        </div>
+                      <div style={{ color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <IconCheck size={16} />
+                        <span>{t('settings.upToDate', `You are using the latest version of DodaZip (v${CURRENT_VERSION}).`)}</span>
                       </div>
                     )}
                   </div>

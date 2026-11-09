@@ -597,6 +597,9 @@ body {
 .file-list-wrap .name-cell svg { flex-shrink: 0; }
 .file-list-wrap .size-cell { text-align: right; color: var(--text-secondary); }
 .file-list-wrap th.size-cell { text-align: right; }
+.file-list-wrap .type-cell { color: var(--text-secondary); font-size: 12px; }
+.file-list-wrap .date-cell { color: var(--text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.file-list-wrap .attr-cell { color: var(--text-muted); font-size: 11px; font-family: monospace; letter-spacing: 0.8px; }
 
 .file-list-wrap td input[type="checkbox"] {
   cursor: pointer;
