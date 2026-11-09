@@ -20,11 +20,11 @@
 ---
 
 <p align="center">
-  <a href="https://github.com/dodatechcom/dodazip/releases/download/v0.1.0/DodaZip-Setup-v0.1.0.exe">
+  <a href="https://github.com/dodatechcom/dodazip/releases/download/v0.2.0/DodaZip-Setup-v0.2.0.exe">
     <img src="https://img.shields.io/badge/Download-Windows%20Installer%20(.exe)-2563eb?style=for-the-badge&logo=windows&logoColor=white" alt="Download Installer" />
   </a>
   &nbsp;&nbsp;
-  <a href="https://github.com/dodatechcom/dodazip/releases/download/v0.1.0/DodaZip-v0.1.0-windows-x64-portable.zip">
+  <a href="https://github.com/dodatechcom/dodazip/releases/download/v0.2.0/DodaZip-v0.2.0-windows-x64-portable.zip">
     <img src="https://img.shields.io/badge/Download-Portable%20Edition%20(.zip)-475569?style=for-the-badge&logo=archive&logoColor=white" alt="Download Portable" />
   </a>
 </p>
