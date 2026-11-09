@@ -84,12 +84,6 @@ Section "MainSection" SEC01
   WriteRegStr HKCU "Software\Classes\DodaZip.Vault\DefaultIcon" "" "$INSTDIR\dzip_file.ico,0"
   WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\open" "" "Browse in DodaZip"
   WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\open\command" "" '"$INSTDIR\dodazip-ui.exe" "%1"'
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_here" "" "Extract Here"
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_here" "Icon" '"$INSTDIR\icon.ico"'
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_here\command" "" '"$INSTDIR\dodazip-ui.exe" --extract-here "%1"'
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_to" "" "Extract to subfolder"
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_to" "Icon" '"$INSTDIR\icon.ico"'
-  WriteRegStr HKCU "Software\Classes\DodaZip.Vault\shell\extract_to\command" "" '"$INSTDIR\dodazip-ui.exe" --extract-to "%1"'
 
   ; Register Context Menu for Files and Folders: "Add to Archive with DodaZip"
   WriteRegStr HKCU "Software\Classes\*\shell\DodaZipCompress" "" "Add to Archive with DodaZip"

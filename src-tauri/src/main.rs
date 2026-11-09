@@ -1694,6 +1694,7 @@ fn register_windows_association() {
         let extract_here_cmd = format!("\"{}\" --extract-here \"%1\"", exe_str);
         let extract_to_cmd = format!("\"{}\" --extract-to \"%1\"", exe_str);
 
+        // 1. DodaZip.Vault registration (.dzip)
         let _ = std::process::Command::new("reg")
             .args(&["add", "HKCU\\Software\\Classes\\.dzip", "/ve", "/d", "DodaZip.Vault", "/f"])
             .creation_flags(CREATE_NO_WINDOW)
@@ -1720,29 +1721,13 @@ fn register_windows_association() {
             .creation_flags(CREATE_NO_WINDOW)
             .status();
 
+        // Clean up any legacy shell verbs on ProgIDs to avoid duplicate menu entries
         let _ = std::process::Command::new("reg")
-            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_here", "/ve", "/d", "Extract Here", "/f"])
+            .args(&["delete", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_here", "/f"])
             .creation_flags(CREATE_NO_WINDOW)
             .status();
         let _ = std::process::Command::new("reg")
-            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_here", "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .status();
-        let _ = std::process::Command::new("reg")
-            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_here\\command", "/ve", "/d", &extract_here_cmd, "/f"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .status();
-
-        let _ = std::process::Command::new("reg")
-            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_to", "/ve", "/d", "Extract to subfolder", "/f"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .status();
-        let _ = std::process::Command::new("reg")
-            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_to", "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .status();
-        let _ = std::process::Command::new("reg")
-            .args(&["add", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_to\\command", "/ve", "/d", &extract_to_cmd, "/f"])
+            .args(&["delete", "HKCU\\Software\\Classes\\DodaZip.Vault\\shell\\extract_to", "/f"])
             .creation_flags(CREATE_NO_WINDOW)
             .status();
 
@@ -1755,46 +1740,60 @@ fn register_windows_association() {
             .creation_flags(CREATE_NO_WINDOW)
             .status();
 
-        // Register Windows Explorer SystemFileAssociations for all archive types
+        // 2. Register Windows Explorer SystemFileAssociations for all archive types (single canonical source of context menu verbs)
         for &ext in SUPPORTED_ASSOCIATIONS {
             let sfa = format!("HKCU\\Software\\Classes\\SystemFileAssociations\\.{}\\shell", ext);
 
+            // Clean up legacy dotted keys to prevent duplicate entries
             let _ = std::process::Command::new("reg")
-                .args(&["add", &format!("{}\\DodaZip.Open", sfa), "/ve", "/d", "Open in DodaZip", "/f"])
+                .args(&["delete", &format!("{}\\DodaZip.Open", sfa), "/f"])
                 .creation_flags(CREATE_NO_WINDOW)
                 .status();
             let _ = std::process::Command::new("reg")
-                .args(&["add", &format!("{}\\DodaZip.Open", sfa), "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
+                .args(&["delete", &format!("{}\\DodaZip.ExtractHere", sfa), "/f"])
                 .creation_flags(CREATE_NO_WINDOW)
                 .status();
             let _ = std::process::Command::new("reg")
-                .args(&["add", &format!("{}\\DodaZip.Open\\command", sfa), "/ve", "/d", &open_cmd, "/f"])
-                .creation_flags(CREATE_NO_WINDOW)
-                .status();
-
-            let _ = std::process::Command::new("reg")
-                .args(&["add", &format!("{}\\DodaZip.ExtractHere", sfa), "/ve", "/d", "Extract Here", "/f"])
-                .creation_flags(CREATE_NO_WINDOW)
-                .status();
-            let _ = std::process::Command::new("reg")
-                .args(&["add", &format!("{}\\DodaZip.ExtractHere", sfa), "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
-                .creation_flags(CREATE_NO_WINDOW)
-                .status();
-            let _ = std::process::Command::new("reg")
-                .args(&["add", &format!("{}\\DodaZip.ExtractHere\\command", sfa), "/ve", "/d", &extract_here_cmd, "/f"])
+                .args(&["delete", &format!("{}\\DodaZip.ExtractTo", sfa), "/f"])
                 .creation_flags(CREATE_NO_WINDOW)
                 .status();
 
             let _ = std::process::Command::new("reg")
-                .args(&["add", &format!("{}\\DodaZip.ExtractTo", sfa), "/ve", "/d", "Extract to subfolder", "/f"])
+                .args(&["add", &format!("{}\\DodaZipOpen", sfa), "/ve", "/d", "Open in DodaZip", "/f"])
                 .creation_flags(CREATE_NO_WINDOW)
                 .status();
             let _ = std::process::Command::new("reg")
-                .args(&["add", &format!("{}\\DodaZip.ExtractTo", sfa), "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
+                .args(&["add", &format!("{}\\DodaZipOpen", sfa), "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
                 .creation_flags(CREATE_NO_WINDOW)
                 .status();
             let _ = std::process::Command::new("reg")
-                .args(&["add", &format!("{}\\DodaZip.ExtractTo\\command", sfa), "/ve", "/d", &extract_to_cmd, "/f"])
+                .args(&["add", &format!("{}\\DodaZipOpen\\command", sfa), "/ve", "/d", &open_cmd, "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZipExtractHere", sfa), "/ve", "/d", "Extract Here", "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZipExtractHere", sfa), "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZipExtractHere\\command", sfa), "/ve", "/d", &extract_here_cmd, "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZipExtractTo", sfa), "/ve", "/d", "Extract to subfolder", "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZipExtractTo", sfa), "/v", "Icon", "/d", &format!("\"{}\"", app_icon_str), "/f"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .status();
+            let _ = std::process::Command::new("reg")
+                .args(&["add", &format!("{}\\DodaZipExtractTo\\command", sfa), "/ve", "/d", &extract_to_cmd, "/f"])
                 .creation_flags(CREATE_NO_WINDOW)
                 .status();
         }
@@ -1972,29 +1971,54 @@ async fn set_file_associations(associations: HashMap<String, bool>) -> Result<()
                     .creation_flags(CREATE_NO_WINDOW)
                     .status();
 
+                // Clean up any legacy shell verbs on ProgIDs
                 let _ = std::process::Command::new("reg")
-                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_here", prog_id), "/ve", "/d", "Extract Here", "/f"])
+                    .args(&["delete", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_here", prog_id), "/f"])
                     .creation_flags(CREATE_NO_WINDOW)
                     .status();
                 let _ = std::process::Command::new("reg")
-                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_here", prog_id), "/v", "Icon", "/d", &icon_str, "/f"])
+                    .args(&["delete", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_to", prog_id), "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+
+                // Register single canonical verbs under SystemFileAssociations
+                let sfa = format!("HKCU\\Software\\Classes\\SystemFileAssociations\\.{}\\shell", ext);
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("{}\\DodaZipOpen", sfa), "/ve", "/d", "Open in DodaZip", "/f"])
                     .creation_flags(CREATE_NO_WINDOW)
                     .status();
                 let _ = std::process::Command::new("reg")
-                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_here\\command", prog_id), "/ve", "/d", &extract_here_cmd, "/f"])
+                    .args(&["add", &format!("{}\\DodaZipOpen", sfa), "/v", "Icon", "/d", &icon_str, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("{}\\DodaZipOpen\\command", sfa), "/ve", "/d", &cmd_str, "/f"])
                     .creation_flags(CREATE_NO_WINDOW)
                     .status();
 
                 let _ = std::process::Command::new("reg")
-                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_to", prog_id), "/ve", "/d", "Extract to subfolder", "/f"])
+                    .args(&["add", &format!("{}\\DodaZipExtractHere", sfa), "/ve", "/d", "Extract Here", "/f"])
                     .creation_flags(CREATE_NO_WINDOW)
                     .status();
                 let _ = std::process::Command::new("reg")
-                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_to", prog_id), "/v", "Icon", "/d", &icon_str, "/f"])
+                    .args(&["add", &format!("{}\\DodaZipExtractHere", sfa), "/v", "Icon", "/d", &icon_str, "/f"])
                     .creation_flags(CREATE_NO_WINDOW)
                     .status();
                 let _ = std::process::Command::new("reg")
-                    .args(&["add", &format!("HKCU\\Software\\Classes\\{}\\shell\\extract_to\\command", prog_id), "/ve", "/d", &extract_to_cmd, "/f"])
+                    .args(&["add", &format!("{}\\DodaZipExtractHere\\command", sfa), "/ve", "/d", &extract_here_cmd, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("{}\\DodaZipExtractTo", sfa), "/ve", "/d", "Extract to subfolder", "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("{}\\DodaZipExtractTo", sfa), "/v", "Icon", "/d", &icon_str, "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["add", &format!("{}\\DodaZipExtractTo\\command", sfa), "/ve", "/d", &extract_to_cmd, "/f"])
                     .creation_flags(CREATE_NO_WINDOW)
                     .status();
 
@@ -2003,6 +2027,31 @@ async fn set_file_associations(associations: HashMap<String, bool>) -> Result<()
                     .creation_flags(CREATE_NO_WINDOW)
                     .status();
             } else {
+                let sfa = format!("HKCU\\Software\\Classes\\SystemFileAssociations\\.{}\\shell", ext);
+                let _ = std::process::Command::new("reg")
+                    .args(&["delete", &format!("{}\\DodaZipOpen", sfa), "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["delete", &format!("{}\\DodaZipExtractHere", sfa), "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["delete", &format!("{}\\DodaZipExtractTo", sfa), "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["delete", &format!("{}\\DodaZip.Open", sfa), "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["delete", &format!("{}\\DodaZip.ExtractHere", sfa), "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
+                let _ = std::process::Command::new("reg")
+                    .args(&["delete", &format!("{}\\DodaZip.ExtractTo", sfa), "/f"])
+                    .creation_flags(CREATE_NO_WINDOW)
+                    .status();
                 let output = std::process::Command::new("reg")
                     .args(&["query", &format!("HKCU\\Software\\Classes\\.{}", ext), "/ve"])
                     .creation_flags(CREATE_NO_WINDOW)
